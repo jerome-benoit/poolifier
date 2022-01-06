@@ -68,7 +68,7 @@
     "benchmark": "^2.1.4",
     "eslint": "^8.6.0",
     "eslint-config-standard": "^16.0.3",
-    "eslint-define-config": "^1.2.1",
+    "eslint-define-config": "^1.2.2",
     "eslint-plugin-import": "^2.25.4",
     "eslint-plugin-jsdoc": "^37.5.1",
     "eslint-plugin-node": "^11.1.0",
