@@ -19,6 +19,7 @@
     "lint": "eslint . --cache",
     "lint:fix": "eslint . --cache --fix",
     "typedoc": "typedoc",
+    "sonar:properties": "./updateSonarProps.sh",
     "prepublishOnly": "npm run build:prod"
   },
   "repository": {
@@ -62,7 +63,7 @@
     "lib"
   ],
   "devDependencies": {
-    "@types/node": "^17.0.39",
+    "@types/node": "^17.0.42",
     "@typescript-eslint/eslint-plugin": "^5.27.0",
     "@typescript-eslint/parser": "^5.27.0",
     "benchmark": "^2.1.4",
