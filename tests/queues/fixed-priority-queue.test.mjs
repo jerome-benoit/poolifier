@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { FixedPriorityQueue } from '../../lib/queues/fixed-priority-queue.cjs'
+import { FixedPriorityQueue } from '../../lib/queues/fixed-priority-queue.mjs'
 import {
   defaultAgingFactor,
   defaultLoadExponent,
   defaultQueueSize,
-} from '../../lib/queues/queue-types.cjs'
+} from '../../lib/queues/queue-types.mjs'
 
 describe('Fixed priority queue test suite', () => {
   it('Verify constructor() behavior', () => {

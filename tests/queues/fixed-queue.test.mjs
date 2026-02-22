@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { FixedQueue } from '../../lib/queues/fixed-queue.cjs'
-import { defaultQueueSize } from '../../lib/queues/queue-types.cjs'
+import { FixedQueue } from '../../lib/queues/fixed-queue.mjs'
+import { defaultQueueSize } from '../../lib/queues/queue-types.mjs'
 
 describe('Fixed queue test suite', () => {
   it('Verify constructor() behavior', () => {
