@@ -1,6 +1,6 @@
-import { expect } from '@std/expect'
 import { Worker as ClusterWorker } from 'node:cluster'
 import { Worker as ThreadWorker } from 'node:worker_threads'
+import { describe, expect, it } from 'vitest'
 
 import { CircularBuffer } from '../../lib/circular-buffer.cjs'
 import { WorkerTypes } from '../../lib/index.cjs'

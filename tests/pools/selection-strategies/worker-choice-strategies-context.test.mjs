@@ -1,5 +1,5 @@
-import { expect } from '@std/expect'
 import { createStubInstance, restore, stub } from 'sinon'
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest'
 
 import {
   DynamicThreadPool,
@@ -20,7 +20,7 @@ describe('Worker choice strategies context test suite', () => {
   const max = 3
   let dynamicPool, fixedPool
 
-  before('Create pools', () => {
+  beforeAll(() => {
     fixedPool = new FixedThreadPool(
       max,
       './tests/worker-files/thread/testWorker.mjs'
@@ -36,7 +36,7 @@ describe('Worker choice strategies context test suite', () => {
     restore()
   })
 
-  after('Destroy pools', async () => {
+  afterAll(async () => {
     await fixedPool.destroy()
     await dynamicPool.destroy()
   })

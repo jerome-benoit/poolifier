@@ -1,4 +1,4 @@
-import { expect } from '@std/expect'
+import { describe, expect, it } from 'vitest'
 
 import { CircularBuffer, defaultBufferSize } from '../lib/circular-buffer.cjs'
 

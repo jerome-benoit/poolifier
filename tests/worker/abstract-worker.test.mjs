@@ -1,5 +1,5 @@
-import { expect } from '@std/expect'
 import { restore, stub } from 'sinon'
+import { afterEach, describe, expect, it } from 'vitest'
 
 import {
   ClusterWorker,

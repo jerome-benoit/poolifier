@@ -1,4 +1,4 @@
-import { expect } from '@std/expect'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { FixedClusterPool, FixedThreadPool } from '../../../lib/index.cjs'
 import {
@@ -11,7 +11,7 @@ describe('Selection strategies utils test suite', () => {
   const numberOfThreads = 4
   let clusterFixedPool, threadFixedPool
 
-  before('Create pools', () => {
+  beforeAll(() => {
     clusterFixedPool = new FixedClusterPool(
       numberOfWorkers,
       './tests/worker-files/cluster/testWorker.cjs'
@@ -22,7 +22,7 @@ describe('Selection strategies utils test suite', () => {
     )
   })
 
-  after('Destroy pools', async () => {
+  afterAll(async () => {
     await clusterFixedPool.destroy()
     await threadFixedPool.destroy()
   })

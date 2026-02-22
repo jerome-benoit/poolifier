@@ -1,10 +1,10 @@
-import { expect } from '@std/expect'
 // eslint-disable-next-line n/no-unsupported-features/node-builtins
 import { createHook, executionAsyncId } from 'node:async_hooks'
 import { EventEmitterAsyncResource } from 'node:events'
 import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { describe, expect, it } from 'vitest'
 
 import { CircularBuffer } from '../../lib/circular-buffer.cjs'
 import {

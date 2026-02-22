@@ -1,7 +1,7 @@
-import { expect } from '@std/expect'
 import { randomInt } from 'node:crypto'
 import os from 'node:os'
 import { useFakeTimers } from 'sinon'
+import { describe, expect, it } from 'vitest'
 
 import { KillBehaviors } from '../lib/index.cjs'
 import {

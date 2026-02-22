@@ -1,5 +1,5 @@
-import { expect } from '@std/expect'
 import { randomInt } from 'node:crypto'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { FixedThreadPool } from '../../../lib/index.cjs'
 import { FairShareWorkerChoiceStrategy } from '../../../lib/pools/selection-strategies/fair-share-worker-choice-strategy.cjs'
@@ -14,14 +14,14 @@ describe('Weighted round robin worker choice strategy test suite', () => {
   const max = 3
   let pool
 
-  before('Create pool', () => {
+  beforeAll(() => {
     pool = new FixedThreadPool(
       max,
       './tests/worker-files/thread/testWorker.mjs'
     )
   })
 
-  after('Destroy pool', async () => {
+  afterAll(async () => {
     await pool.destroy()
   })
 

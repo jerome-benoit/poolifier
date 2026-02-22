@@ -1,5 +1,5 @@
-import { expect } from '@std/expect'
 import cluster from 'node:cluster'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { FixedClusterPool, PoolEvents } from '../../../lib/index.cjs'
 import { DEFAULT_TASK_NAME } from '../../../lib/utils.cjs'
@@ -11,7 +11,7 @@ describe('Fixed cluster pool test suite', () => {
   const tasksConcurrency = 2
   let asyncErrorPool, asyncPool, echoPool, emptyPool, errorPool, pool, queuePool
 
-  before('Create pools', () => {
+  beforeAll(() => {
     pool = new FixedClusterPool(
       numberOfWorkers,
       './tests/worker-files/cluster/testWorker.cjs',
@@ -59,7 +59,7 @@ describe('Fixed cluster pool test suite', () => {
     )
   })
 
-  after('Destroy pools', async () => {
+  afterAll(async () => {
     // We need to clean up the resources after our tests
     await echoPool.destroy()
     await asyncPool.destroy()

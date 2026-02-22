@@ -1,5 +1,5 @@
-import { expect } from '@std/expect'
 import { randomInt } from 'node:crypto'
+import { describe, expect, it } from 'vitest'
 
 import { CircularBuffer } from '../../../lib/circular-buffer.cjs'
 import {

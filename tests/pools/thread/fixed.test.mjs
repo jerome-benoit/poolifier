@@ -1,4 +1,4 @@
-import { expect } from '@std/expect'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { FixedThreadPool, PoolEvents } from '../../../lib/index.cjs'
 import { DEFAULT_TASK_NAME } from '../../../lib/utils.cjs'
@@ -10,7 +10,7 @@ describe('Fixed thread pool test suite', () => {
   const tasksConcurrency = 2
   let asyncErrorPool, asyncPool, echoPool, emptyPool, errorPool, pool, queuePool
 
-  before('Create pools', () => {
+  beforeAll(() => {
     pool = new FixedThreadPool(
       numberOfThreads,
       './tests/worker-files/thread/testWorker.mjs',
@@ -58,7 +58,7 @@ describe('Fixed thread pool test suite', () => {
     )
   })
 
-  after('Destroy pools', async () => {
+  afterAll(async () => {
     // We need to clean up the resources after our tests
     await echoPool.destroy()
     await asyncPool.destroy()

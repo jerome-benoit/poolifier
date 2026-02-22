@@ -1,6 +1,6 @@
-import { expect } from '@std/expect'
 import { Worker as ClusterWorker } from 'node:cluster'
 import { MessageChannel, Worker as ThreadWorker } from 'node:worker_threads'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { CircularBuffer } from '../../lib/circular-buffer.cjs'
 import { WorkerTypes } from '../../lib/index.cjs'
@@ -12,7 +12,7 @@ import { DEFAULT_TASK_NAME } from '../../lib/utils.cjs'
 describe('Worker node test suite', () => {
   let clusterWorkerNode, threadWorkerNode
 
-  before('Create worker nodes', () => {
+  beforeAll(() => {
     threadWorkerNode = new WorkerNode(
       WorkerTypes.thread,
       './tests/worker-files/thread/testWorker.mjs',
@@ -33,7 +33,7 @@ describe('Worker node test suite', () => {
     )
   })
 
-  after('Terminate worker nodes', async () => {
+  afterAll(async () => {
     await threadWorkerNode.terminate()
     await clusterWorkerNode.terminate()
   })
