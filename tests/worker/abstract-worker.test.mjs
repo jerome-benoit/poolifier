@@ -8,6 +8,7 @@ import {
   WorkerChoiceStrategies,
 } from '../../lib/index.mjs'
 import { DEFAULT_TASK_NAME, EMPTY_FUNCTION } from '../../lib/utils.mjs'
+import { sleep } from '../test-utils.cjs'
 
 describe('Abstract worker test suite', () => {
   class StubWorkerWithMainWorker extends ThreadWorker {
@@ -243,14 +244,18 @@ describe('Abstract worker test suite', () => {
     )
   })
 
-  it('Verify that async kill handler is called when worker is killed', () => {
+  it('Verify that async kill handler is called when worker is killed', async () => {
     const killHandlerStub = stub().returns()
     const worker = new ClusterWorker(() => {}, {
       killHandler: async () => await Promise.resolve(killHandlerStub()),
     })
     worker.isMain = false
+    const sendToMainWorkerStub = stub(worker, 'sendToMainWorker').returns()
     worker.handleKillMessage()
+    await sleep(10)
     expect(killHandlerStub.calledOnce).toBe(true)
+    expect(sendToMainWorkerStub.calledOnce).toBe(true)
+    expect(sendToMainWorkerStub.calledWith({ kill: 'success' })).toBe(true)
   })
 
   it('Verify that getMainWorker() throw error if main worker is not set', () => {
