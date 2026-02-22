@@ -10,7 +10,7 @@ Please do your PR on **master** branch.
 **How to run unit tests and coverage**
 
 ```bash
-  pnpm test && pnpm coverage
+  pnpm test:coverage
 ```
 
 **How to check if your new code is standard JS style**

@@ -50,7 +50,7 @@ jobs:
         run: pnpm install --ignore-scripts --frozen-lockfile
 
       - name: Tests & Coverage
-        run: pnpm coverage
+        run: pnpm test:coverage
 
       - name: Lint
         run: pnpm lint
