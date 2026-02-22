@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { FixedClusterPool, FixedThreadPool } from '../../../lib/index.cjs'
+import { FixedClusterPool, FixedThreadPool } from '../../../lib/index.mjs'
 import {
   buildWorkerChoiceStrategyOptions,
   getWorkerChoiceStrategiesRetries,
-} from '../../../lib/pools/selection-strategies/selection-strategies-utils.cjs'
+} from '../../../lib/pools/selection-strategies/selection-strategies-utils.mjs'
 
 describe('Selection strategies utils test suite', () => {
   const numberOfWorkers = 4

@@ -2,12 +2,12 @@ import { Worker as ClusterWorker } from 'node:cluster'
 import { MessageChannel, Worker as ThreadWorker } from 'node:worker_threads'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { CircularBuffer } from '../../lib/circular-buffer.cjs'
-import { WorkerTypes } from '../../lib/index.cjs'
-import { WorkerNode } from '../../lib/pools/worker-node.cjs'
-import { MeasurementHistorySize } from '../../lib/pools/worker.cjs'
-import { PriorityQueue } from '../../lib/queues/priority-queue.cjs'
-import { DEFAULT_TASK_NAME } from '../../lib/utils.cjs'
+import { CircularBuffer } from '../../lib/circular-buffer.mjs'
+import { WorkerTypes } from '../../lib/index.mjs'
+import { WorkerNode } from '../../lib/pools/worker-node.mjs'
+import { MeasurementHistorySize } from '../../lib/pools/worker.mjs'
+import { PriorityQueue } from '../../lib/queues/priority-queue.mjs'
+import { DEFAULT_TASK_NAME } from '../../lib/utils.mjs'
 
 describe('Worker node test suite', () => {
   let clusterWorkerNode, threadWorkerNode

@@ -4,7 +4,7 @@ import {
   DynamicThreadPool,
   PoolEvents,
   WorkerChoiceStrategies,
-} from '../../../lib/index.cjs'
+} from '../../../lib/index.mjs'
 import { TaskFunctions } from '../../test-types.cjs'
 import { sleep, waitPoolEvents, waitWorkerEvents } from '../../test-utils.cjs'
 

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
-import { FixedThreadPool, PoolEvents } from '../../../lib/index.cjs'
-import { DEFAULT_TASK_NAME } from '../../../lib/utils.cjs'
+import { FixedThreadPool, PoolEvents } from '../../../lib/index.mjs'
+import { DEFAULT_TASK_NAME } from '../../../lib/utils.mjs'
 import { TaskFunctions } from '../../test-types.cjs'
 import { sleep, waitWorkerEvents } from '../../test-utils.cjs'
 

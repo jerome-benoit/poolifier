@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { CircularBuffer, defaultBufferSize } from '../lib/circular-buffer.cjs'
+import { CircularBuffer, defaultBufferSize } from '../lib/circular-buffer.mjs'
 
 describe('Circular buffer test suite', () => {
   it('Verify that circular buffer can be instantiated', () => {

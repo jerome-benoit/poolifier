@@ -1,8 +1,8 @@
 import { restore, stub } from 'sinon'
 import { afterEach, describe, expect, it } from 'vitest'
 
-import { ClusterWorker } from '../../lib/index.cjs'
-import { DEFAULT_TASK_NAME } from '../../lib/utils.cjs'
+import { ClusterWorker } from '../../lib/index.mjs'
+import { DEFAULT_TASK_NAME } from '../../lib/utils.mjs'
 
 describe('Cluster worker test suite', () => {
   afterEach(() => {

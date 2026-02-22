@@ -6,8 +6,8 @@ import {
   KillBehaviors,
   ThreadWorker,
   WorkerChoiceStrategies,
-} from '../../lib/index.cjs'
-import { DEFAULT_TASK_NAME, EMPTY_FUNCTION } from '../../lib/utils.cjs'
+} from '../../lib/index.mjs'
+import { DEFAULT_TASK_NAME, EMPTY_FUNCTION } from '../../lib/utils.mjs'
 
 describe('Abstract worker test suite', () => {
   class StubWorkerWithMainWorker extends ThreadWorker {

@@ -6,7 +6,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
-import { CircularBuffer } from '../../lib/circular-buffer.cjs'
+import { CircularBuffer } from '../../lib/circular-buffer.mjs'
 import {
   DynamicClusterPool,
   DynamicThreadPool,
@@ -16,11 +16,11 @@ import {
   PoolTypes,
   WorkerChoiceStrategies,
   WorkerTypes,
-} from '../../lib/index.cjs'
-import { WorkerNode } from '../../lib/pools/worker-node.cjs'
-import { PriorityQueue } from '../../lib/queues/priority-queue.cjs'
-import { defaultBucketSize } from '../../lib/queues/queue-types.cjs'
-import { DEFAULT_TASK_NAME } from '../../lib/utils.cjs'
+} from '../../lib/index.mjs'
+import { WorkerNode } from '../../lib/pools/worker-node.mjs'
+import { PriorityQueue } from '../../lib/queues/priority-queue.mjs'
+import { defaultBucketSize } from '../../lib/queues/queue-types.mjs'
+import { DEFAULT_TASK_NAME } from '../../lib/utils.mjs'
 import { waitPoolEvents } from '../test-utils.cjs'
 
 describe('Abstract pool test suite', () => {

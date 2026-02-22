@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { AbortError } from '../../lib/worker/abort-error.cjs'
+import { AbortError } from '../../lib/worker/abort-error.mjs'
 
 describe('Abort error test suite', () => {
   it('Verify constructor() behavior', () => {

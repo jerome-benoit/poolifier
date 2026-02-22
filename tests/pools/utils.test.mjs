@@ -2,8 +2,8 @@ import { Worker as ClusterWorker } from 'node:cluster'
 import { Worker as ThreadWorker } from 'node:worker_threads'
 import { describe, expect, it } from 'vitest'
 
-import { CircularBuffer } from '../../lib/circular-buffer.cjs'
-import { WorkerTypes } from '../../lib/index.cjs'
+import { CircularBuffer } from '../../lib/circular-buffer.mjs'
+import { WorkerTypes } from '../../lib/index.mjs'
 import {
   checkValidWorkerNodeKeys,
   createWorker,
@@ -11,8 +11,8 @@ import {
   getDefaultTasksQueueOptions,
   initWorkerInfo,
   updateMeasurementStatistics,
-} from '../../lib/pools/utils.cjs'
-import { MeasurementHistorySize } from '../../lib/pools/worker.cjs'
+} from '../../lib/pools/utils.mjs'
+import { MeasurementHistorySize } from '../../lib/pools/worker.mjs'
 
 describe('Pool utils test suite', () => {
   it('Verify DEFAULT_MEASUREMENT_STATISTICS_REQUIREMENTS values', () => {
@@ -118,7 +118,7 @@ describe('Pool utils test suite', () => {
     expect(
       createWorker(
         WorkerTypes.cluster,
-        './tests/worker-files/cluster/testWorker.mjs',
+        './tests/worker-files/cluster/testWorker.cjs',
         {}
       )
     ).toBeInstanceOf(ClusterWorker)
@@ -145,7 +145,7 @@ describe('Pool utils test suite', () => {
     })
     const clusterWorker = createWorker(
       WorkerTypes.cluster,
-      './tests/worker-files/cluster/testWorker.mjs',
+      './tests/worker-files/cluster/testWorker.cjs',
       {}
     )
     const clusterWorkerInfo = initWorkerInfo(clusterWorker)

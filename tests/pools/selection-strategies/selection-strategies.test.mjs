@@ -1,14 +1,14 @@
 import { randomInt } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 
-import { CircularBuffer } from '../../../lib/circular-buffer.cjs'
+import { CircularBuffer } from '../../../lib/circular-buffer.mjs'
 import {
   DynamicClusterPool,
   DynamicThreadPool,
   FixedClusterPool,
   FixedThreadPool,
   WorkerChoiceStrategies,
-} from '../../../lib/index.cjs'
+} from '../../../lib/index.mjs'
 
 describe('Selection strategies test suite', () => {
   const min = 0

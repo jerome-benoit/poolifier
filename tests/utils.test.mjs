@@ -3,7 +3,7 @@ import os from 'node:os'
 import { useFakeTimers } from 'sinon'
 import { describe, expect, it } from 'vitest'
 
-import { KillBehaviors } from '../lib/index.cjs'
+import { KillBehaviors } from '../lib/index.mjs'
 import {
   availableParallelism,
   average,
@@ -20,7 +20,7 @@ import {
   round,
   secureRandom,
   sleep,
-} from '../lib/utils.cjs'
+} from '../lib/utils.mjs'
 
 describe('Utils test suite', () => {
   it('Verify DEFAULT_TASK_NAME value', () => {
