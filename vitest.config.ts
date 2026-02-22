@@ -18,6 +18,7 @@ export default defineConfig({
     sequence: {
       hooks: 'list',
     },
+    setupFiles: ['./tests/vitest.setup.mjs'],
     testTimeout: 30000,
   },
 })
