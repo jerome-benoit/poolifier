@@ -1,4 +1,9 @@
 {
   "extends": "./tsconfig.json",
-  "exclude": ["node_modules", "lib", "examples/typescript/**/*.ts"]
+  "exclude": [
+    "node_modules",
+    "lib",
+    "examples/typescript/**/*.ts",
+    "vitest.config.ts"
+  ]
 }
