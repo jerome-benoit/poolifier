@@ -1,16 +1,19 @@
 import { expect } from 'vitest'
 
 /**
- * Format a value for display in error messages
- * @param value
- * @param indent
+ * Format a value for display in error messages.
+ * @param value - The value to format.
+ * @param indent - The indentation level.
+ * @returns The formatted value string.
  */
 function formatValue (value, indent = 0) {
   const spaces = '  '.repeat(indent)
   if (value === null) return 'null'
   if (value === undefined) return 'undefined'
   if (typeof value === 'string') return JSON.stringify(value)
-  if (typeof value === 'number' || typeof value === 'boolean') { return String(value) }
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return String(value)
+  }
   if (Array.isArray(value)) {
     if (value.length === 0) return '[]'
     const items = value
@@ -39,7 +42,7 @@ function formatValue (value, indent = 0) {
 }
 
 /**
- * Custom matcher that replicates @std/expect's toMatchObject semantics for arrays.
+ * Custom matcher that replicates `@std/expect`'s toMatchObject semantics for arrays.
  *
  * Key difference from Vitest's built-in toMatchObject:
  * - For arrays: only checks that each element in `expected` matches the corresponding
@@ -47,10 +50,11 @@ function formatValue (value, indent = 0) {
  * - For objects: checks that all keys in `expected` exist in `received` with matching values.
  *   Extra keys in `received` are ignored.
  *
- * This matches the behavior of @std/expect from Deno which uses subsetEquality.
- * @param received
- * @param expected
- * @param asymmetricMatchers
+ * This matches the behavior of `@std/expect` from Deno which uses subsetEquality.
+ * @param received - The actual value received.
+ * @param expected - The expected subset to match.
+ * @param [asymmetricMatchers] - Optional asymmetric matchers.
+ * @returns Whether the received value matches the expected subset.
  */
 function subsetMatch (received, expected, asymmetricMatchers) {
   // Handle asymmetric matchers (like expect.any(Number))
@@ -128,10 +132,11 @@ function subsetMatch (received, expected, asymmetricMatchers) {
 
 expect.extend({
   /**
-   * Custom toMatchObject that replicates @std/expect semantics.
+   * Custom toMatchObject that replicates `@std/expect` semantics.
    * This overrides Vitest's built-in toMatchObject for array subset matching.
-   * @param received
-   * @param expected
+   * @param received - The actual value received.
+   * @param expected - The expected subset to match.
+   * @returns The matcher result with pass and message.
    */
   toMatchObject (received, expected) {
     const pass = subsetMatch(received, expected)
