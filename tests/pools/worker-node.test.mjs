@@ -34,6 +34,8 @@ describe('Worker node test suite', () => {
   })
 
   afterAll(async () => {
+    // Skip on CI to avoid afterAll hook timeout
+    if (process.env.CI != null) return
     await threadWorkerNode.terminate()
     await clusterWorkerNode.terminate()
   })

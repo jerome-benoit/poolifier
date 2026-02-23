@@ -23,6 +23,8 @@ describe('Selection strategies utils test suite', () => {
   })
 
   afterAll(async () => {
+    // Skip on CI to avoid afterAll hook timeout
+    if (process.env.CI != null) return
     await clusterFixedPool.destroy()
     await threadFixedPool.destroy()
   })

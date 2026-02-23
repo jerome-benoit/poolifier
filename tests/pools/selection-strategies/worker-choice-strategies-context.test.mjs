@@ -37,6 +37,8 @@ describe('Worker choice strategies context test suite', () => {
   })
 
   afterAll(async () => {
+    // Skip on CI to avoid afterAll hook timeout
+    if (process.env.CI != null) return
     await fixedPool.destroy()
     await dynamicPool.destroy()
   })

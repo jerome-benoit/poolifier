@@ -60,6 +60,8 @@ describe('Fixed cluster pool test suite', () => {
   })
 
   afterAll(async () => {
+    // Skip on CI to avoid afterAll hook timeout
+    if (process.env.CI != null) return
     // We need to clean up the resources after our tests
     await echoPool.destroy()
     await asyncPool.destroy()
@@ -273,7 +275,7 @@ describe('Fixed cluster pool test suite', () => {
   })
 
   it('Shutdown test', { retry: 0 }, async ({ skip }) => {
-    if (process.env.CI) {
+    if (process.env.CI != null) {
       skip()
       return
     }

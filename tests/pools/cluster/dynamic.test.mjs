@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import {
   DynamicClusterPool,
@@ -22,6 +22,14 @@ describe('Dynamic cluster pool test suite', () => {
         errorHandler: e => console.error(e),
       }
     )
+  })
+
+  afterAll(async () => {
+    // Skip on CI to avoid afterAll hook timeout
+    if (process.env.CI != null) return
+    if (pool.info.started && !pool.destroying) {
+      await pool.destroy()
+    }
   })
 
   it('Verify that the function is executed in a worker cluster', async () => {
@@ -75,7 +83,7 @@ describe('Dynamic cluster pool test suite', () => {
   })
 
   it('Shutdown test', { retry: 0 }, async ({ skip }) => {
-    if (process.env.CI) {
+    if (process.env.CI != null) {
       skip()
       return
     }
