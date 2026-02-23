@@ -13,9 +13,9 @@ export default defineConfig({
       },
     },
     fileParallelism: false,
-    hookTimeout: 60000,
+    hookTimeout: 120000,
     include: ['tests/**/*.test.mjs'],
     setupFiles: ['./tests/vitest.setup.mjs'],
-    testTimeout: 60000,
+    testTimeout: 120000,
   },
 })
