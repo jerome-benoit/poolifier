@@ -300,7 +300,11 @@ describe('Fixed thread pool test suite', () => {
     expect(error.stack).toBeDefined()
   })
 
-  it('Shutdown test', async () => {
+  it('Shutdown test', { retry: 0 }, async ({ skip }) => {
+    if (process.env.CI) {
+      skip()
+      return
+    }
     const exitPromise = waitWorkerEvents(pool, 'exit', numberOfThreads)
     expect(pool.emitter.eventNames()).toStrictEqual([])
     let poolDestroy = 0

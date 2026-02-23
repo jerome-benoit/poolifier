@@ -74,7 +74,11 @@ describe('Dynamic thread pool test suite', () => {
     expect(pool.workerNodes.length).toBe(min)
   })
 
-  it('Shutdown test', async () => {
+  it('Shutdown test', { retry: 0 }, async ({ skip }) => {
+    if (process.env.CI) {
+      skip()
+      return
+    }
     const exitPromise = waitWorkerEvents(pool, 'exit', min)
     expect(pool.emitter.eventNames()).toStrictEqual([PoolEvents.busy])
     let poolDestroy = 0

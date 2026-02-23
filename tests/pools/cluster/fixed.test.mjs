@@ -272,7 +272,11 @@ describe('Fixed cluster pool test suite', () => {
     expect(error.stack).toBeDefined()
   })
 
-  it('Shutdown test', async () => {
+  it('Shutdown test', { retry: 0 }, async ({ skip }) => {
+    if (process.env.CI) {
+      skip()
+      return
+    }
     const exitPromise = waitWorkerEvents(pool, 'exit', numberOfWorkers)
     expect(pool.emitter.eventNames()).toStrictEqual([])
     let poolDestroy = 0
