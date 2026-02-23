@@ -1,4 +1,4 @@
-import { KillBehaviors, ThreadWorker } from '../../../lib/index.cjs'
+import { KillBehaviors, ThreadWorker } from '../../../lib/index.mjs'
 
 /**
  * Test worker function that echoes the input data.

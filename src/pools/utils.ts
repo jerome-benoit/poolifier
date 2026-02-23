@@ -1,6 +1,5 @@
 import cluster, { Worker as ClusterWorker } from 'node:cluster'
 import { existsSync } from 'node:fs'
-import { env } from 'node:process'
 import {
   SHARE_ENV,
   Worker as ThreadWorker,
@@ -364,10 +363,7 @@ const updateMeasurementStatistics = (
     }
   }
 }
-if (env.NODE_ENV === 'test') {
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-  exports.updateMeasurementStatistics = updateMeasurementStatistics
-}
+export { updateMeasurementStatistics }
 
 export const updateWaitTimeWorkerUsage = <
   Worker extends IWorker,

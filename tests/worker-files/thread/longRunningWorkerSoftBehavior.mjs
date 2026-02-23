@@ -1,4 +1,4 @@
-import { ThreadWorker } from '../../../lib/index.cjs'
+import { ThreadWorker } from '../../../lib/index.mjs'
 import { sleepTaskFunction } from '../../test-utils.cjs'
 
 /**

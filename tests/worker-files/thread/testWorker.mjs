@@ -1,4 +1,4 @@
-import { KillBehaviors, ThreadWorker } from '../../../lib/index.cjs'
+import { KillBehaviors, ThreadWorker } from '../../../lib/index.mjs'
 import { TaskFunctions } from '../../test-types.cjs'
 import { executeTaskFunction } from '../../test-utils.cjs'
 
