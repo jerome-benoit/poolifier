@@ -517,8 +517,8 @@ describe('Abstract worker test suite', () => {
         kill: true,
         workerId: worker.id,
       })
-      expect(sendToMainWorkerStub.called).toBe(true)
-      expect(sendToMainWorkerStub.lastCall.args[0]).toMatchObject({
+      expect(sendToMainWorkerStub.callCount).toBe(1)
+      expect(sendToMainWorkerStub.getCall(0).args[0]).toMatchObject({
         kill: 'success',
       })
     })
@@ -532,9 +532,11 @@ describe('Abstract worker test suite', () => {
       const sendToMainWorkerStub = stub(worker, 'sendToMainWorker').returns()
       worker.handleKillMessage()
       await sleep(10)
-      expect(killHandlerStub.calledOnce).toBe(true)
-      expect(sendToMainWorkerStub.called).toBe(true)
-      expect(sendToMainWorkerStub.calledWith({ kill: 'success' })).toBe(true)
+      expect(killHandlerStub.callCount).toBe(1)
+      expect(sendToMainWorkerStub.callCount).toBe(1)
+      expect(sendToMainWorkerStub.getCall(0).args[0]).toStrictEqual({
+        kill: 'success',
+      })
     })
 
     it('Verify that messageListener() throws on missing workerId', () => {
@@ -562,8 +564,8 @@ describe('Abstract worker test suite', () => {
         name: DEFAULT_TASK_NAME,
         taskId: '550e8400-e29b-41d4-a716-446655440000',
       })
-      expect(sendToMainWorkerStub.called).toBe(true)
-      const lastCall = sendToMainWorkerStub.lastCall
+      expect(sendToMainWorkerStub.callCount).toBe(1)
+      const lastCall = sendToMainWorkerStub.getCall(0)
       expect(lastCall.args[0].data).toBe(42)
       expect(lastCall.args[0].taskId).toBe(
         '550e8400-e29b-41d4-a716-446655440000'
@@ -583,8 +585,8 @@ describe('Abstract worker test suite', () => {
         taskId: '550e8400-e29b-41d4-a716-446655440000',
       })
       await sleep(10)
-      expect(sendToMainWorkerStub.called).toBe(true)
-      const lastCall = sendToMainWorkerStub.lastCall
+      expect(sendToMainWorkerStub.callCount).toBe(1)
+      const lastCall = sendToMainWorkerStub.getCall(0)
       expect(lastCall.args[0].data).toBe(42)
       expect(lastCall.args[0].taskId).toBe(
         '550e8400-e29b-41d4-a716-446655440000'
@@ -600,10 +602,10 @@ describe('Abstract worker test suite', () => {
         name: 'unknown',
         taskId: '550e8400-e29b-41d4-a716-446655440000',
       })
-      expect(sendToMainWorkerStub.called).toBe(true)
-      const lastCall = sendToMainWorkerStub.lastCall
+      expect(sendToMainWorkerStub.callCount).toBe(1)
+      const lastCall = sendToMainWorkerStub.getCall(0)
       expect(lastCall.args[0].workerError).toBeDefined()
-      expect(lastCall.args[0].workerError.message).toMatch(
+      expect(lastCall.args[0].workerError.error.message).toMatch(
         /Task function 'unknown' not found/
       )
     })
@@ -619,10 +621,10 @@ describe('Abstract worker test suite', () => {
         name: DEFAULT_TASK_NAME,
         taskId: '550e8400-e29b-41d4-a716-446655440000',
       })
-      expect(sendToMainWorkerStub.called).toBe(true)
-      const lastCall = sendToMainWorkerStub.lastCall
+      expect(sendToMainWorkerStub.callCount).toBe(1)
+      const lastCall = sendToMainWorkerStub.getCall(0)
       expect(lastCall.args[0].workerError).toBeDefined()
-      expect(lastCall.args[0].workerError.message).toBe('Task error')
+      expect(lastCall.args[0].workerError.error.message).toBe('Task error')
     })
 
     it('Verify that runAsync() handles task function error', async () => {
@@ -637,10 +639,12 @@ describe('Abstract worker test suite', () => {
         taskId: '550e8400-e29b-41d4-a716-446655440000',
       })
       await sleep(10)
-      expect(sendToMainWorkerStub.called).toBe(true)
-      const lastCall = sendToMainWorkerStub.lastCall
+      expect(sendToMainWorkerStub.callCount).toBe(1)
+      const lastCall = sendToMainWorkerStub.getCall(0)
       expect(lastCall.args[0].workerError).toBeDefined()
-      expect(lastCall.args[0].workerError.message).toBe('Async task error')
+      expect(lastCall.args[0].workerError.error.message).toBe(
+        'Async task error'
+      )
     })
 
     it('Verify that run() with runTime statistics works', () => {
@@ -652,8 +656,8 @@ describe('Abstract worker test suite', () => {
         name: DEFAULT_TASK_NAME,
         taskId: '550e8400-e29b-41d4-a716-446655440000',
       })
-      expect(sendToMainWorkerStub.called).toBe(true)
-      const lastCall = sendToMainWorkerStub.lastCall
+      expect(sendToMainWorkerStub.callCount).toBe(1)
+      const lastCall = sendToMainWorkerStub.getCall(0)
       expect(lastCall.args[0].taskPerformance.runTime).toBeGreaterThanOrEqual(0)
     })
 
@@ -666,8 +670,8 @@ describe('Abstract worker test suite', () => {
         name: DEFAULT_TASK_NAME,
         taskId: '550e8400-e29b-41d4-a716-446655440000',
       })
-      expect(sendToMainWorkerStub.called).toBe(true)
-      const lastCall = sendToMainWorkerStub.lastCall
+      expect(sendToMainWorkerStub.callCount).toBe(1)
+      const lastCall = sendToMainWorkerStub.getCall(0)
       expect(lastCall.args[0].taskPerformance.elu).toBeDefined()
     })
   })
@@ -682,8 +686,8 @@ describe('Abstract worker test suite', () => {
         taskFunctionProperties: { name: 'newFn' },
       })
       expect(worker.taskFunctions.has('newFn')).toBe(true)
-      expect(sendToMainWorkerStub.called).toBe(true)
-      const lastCall = sendToMainWorkerStub.lastCall
+      expect(sendToMainWorkerStub.callCount).toBe(2)
+      const lastCall = sendToMainWorkerStub.getCall(1)
       expect(lastCall.args[0].taskFunctionOperationStatus).toBe(true)
     })
 
@@ -698,8 +702,8 @@ describe('Abstract worker test suite', () => {
         taskFunctionProperties: { name: 'fn2' },
       })
       expect(worker.taskFunctions.has('fn2')).toBe(false)
-      expect(sendToMainWorkerStub.called).toBe(true)
-      const lastCall = sendToMainWorkerStub.lastCall
+      expect(sendToMainWorkerStub.callCount).toBe(2)
+      const lastCall = sendToMainWorkerStub.getCall(1)
       expect(lastCall.args[0].taskFunctionOperationStatus).toBe(true)
     })
 
@@ -715,8 +719,8 @@ describe('Abstract worker test suite', () => {
       expect(worker.taskFunctions.get(DEFAULT_TASK_NAME)).toStrictEqual(
         worker.taskFunctions.get('fn2')
       )
-      expect(sendToMainWorkerStub.called).toBe(true)
-      const lastCall = sendToMainWorkerStub.lastCall
+      expect(sendToMainWorkerStub.callCount).toBe(2)
+      const lastCall = sendToMainWorkerStub.getCall(1)
       expect(lastCall.args[0].taskFunctionOperationStatus).toBe(true)
     })
 
@@ -727,10 +731,10 @@ describe('Abstract worker test suite', () => {
         taskFunctionOperation: 'unknown',
         taskFunctionProperties: { name: 'fn' },
       })
-      expect(sendToMainWorkerStub.called).toBe(true)
-      const lastCall = sendToMainWorkerStub.lastCall
+      expect(sendToMainWorkerStub.callCount).toBe(1)
+      const lastCall = sendToMainWorkerStub.getCall(0)
       expect(lastCall.args[0].taskFunctionOperationStatus).toBe(false)
-      expect(lastCall.args[0].workerError.message).toMatch(
+      expect(lastCall.args[0].workerError.error.message).toMatch(
         /Unknown task function operation/
       )
     })
