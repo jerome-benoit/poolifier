@@ -49,11 +49,11 @@ jobs:
         run: pnpm lint
 
       - name: Tests & Coverage
-        if: ${​{ matrix.os == 'ubuntu-latest' && matrix.node == '22.x' }}
+        if: ${{ matrix.os == 'ubuntu-latest' && matrix.node == '22.x' }}
         run: pnpm test:coverage
 
       - name: Tests
-        if: ${​{ !(matrix.os == 'ubuntu-latest' && matrix.node == '22.x') }}
+        if: ${{ !(matrix.os == 'ubuntu-latest' && matrix.node == '22.x') }}
         run: pnpm test
 
       - name: Check for SonarCloud Token Availability
