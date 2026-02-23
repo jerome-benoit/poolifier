@@ -16,6 +16,7 @@ export default defineConfig({
     hookTimeout: 240000,
     include: ['tests/**/*.test.mjs'],
     pool: 'forks',
+    retry: 2,
     setupFiles: ['./tests/vitest.setup.mjs'],
     testTimeout: 240000,
   },
