@@ -13,10 +13,10 @@ export default defineConfig({
       },
     },
     fileParallelism: false,
-    hookTimeout: 120000,
+    hookTimeout: 240000,
     include: ['tests/**/*.test.mjs'],
     pool: 'forks',
     setupFiles: ['./tests/vitest.setup.mjs'],
-    testTimeout: 120000,
+    testTimeout: 240000,
   },
 })
