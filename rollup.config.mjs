@@ -73,6 +73,8 @@ export default defineConfig([
     plugins: [
       typescript({
         compilerOptions: {
+          module: 'Node16',
+          moduleResolution: 'Node16',
           sourceMap: sourcemap,
         },
         tsconfig: './tsconfig.build.json',
