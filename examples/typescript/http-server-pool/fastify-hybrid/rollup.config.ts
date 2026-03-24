@@ -24,7 +24,12 @@ export default defineConfig({
     },
   ],
   plugins: [
-    typescript(),
+    typescript({
+      compilerOptions: {
+        module: 'Node16',
+        moduleResolution: 'Node16',
+      },
+    }),
     del({
       targets: ['./dist/*'],
     }),
