@@ -1,59 +1,44 @@
 // Zed project settings for poolifier
 //
-// JS/TS uses ESLint-only (no formatter) because Zed runs code actions BEFORE
-// formatter — using biome would override ESLint, inverting the repo pipeline.
-//
-// Prerequisite: install the Biome extension.
+// JS/TS: Biome format → ESLint --fix
+// JSON, JSONC: Biome
+// Markdown, YAML: Prettier
 {
   "format_on_save": "on",
 
   "languages": {
-    // ── TypeScript ────────────────────────────────────────────
+    // ── TypeScript (covers .ts and .tsx) ──────────────────────
     "TypeScript": {
-      "formatter": "none",
-      "prettier": { "allowed": false },
-      "code_actions_on_format": {
-        "source.fixAll.eslint": true
-      }
+      "formatter": [
+        { "language_server": { "name": "biome" } },
+        { "code_action": "source.fixAll.eslint" }
+      ]
     },
-    // ── JavaScript ────────────────────────────────────────────
+    // ── JavaScript (covers .js, .jsx, .cjs, .mjs) ────────────
     "JavaScript": {
-      "formatter": "none",
-      "prettier": { "allowed": false },
-      "code_actions_on_format": {
-        "source.fixAll.eslint": true
-      }
+      "formatter": [
+        { "language_server": { "name": "biome" } },
+        { "code_action": "source.fixAll.eslint" }
+      ]
     },
     // ── JSON / JSONC ──────────────────────────────────────────
     "JSON": {
       "formatter": {
         "language_server": { "name": "biome" }
-      },
-      "prettier": { "allowed": false }
+      }
     },
     "JSONC": {
       "formatter": {
         "language_server": { "name": "biome" }
-      },
-      "prettier": { "allowed": false }
+      }
     },
     // ── Markdown ──────────────────────────────────────────────
     "Markdown": {
-      "formatter": {
-        "external": {
-          "command": "prettier",
-          "arguments": ["--stdin-filepath", "{buffer_path}"]
-        }
-      }
+      "formatter": "prettier"
     },
     // ── YAML ──────────────────────────────────────────────────
     "YAML": {
-      "formatter": {
-        "external": {
-          "command": "prettier",
-          "arguments": ["--stdin-filepath", "{buffer_path}"]
-        }
-      }
+      "formatter": "prettier"
     }
   },
 
