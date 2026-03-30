@@ -1,0 +1,69 @@
+// Zed project settings for poolifier
+//
+// JS/TS uses ESLint-only (no formatter) because Zed runs code actions BEFORE
+// formatter — using biome would override ESLint, inverting the repo pipeline.
+//
+// Prerequisite: install the Biome extension.
+{
+  "format_on_save": "on",
+
+  "languages": {
+    // ── TypeScript ────────────────────────────────────────────
+    "TypeScript": {
+      "formatter": "none",
+      "prettier": { "allowed": false },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    // ── JavaScript ────────────────────────────────────────────
+    "JavaScript": {
+      "formatter": "none",
+      "prettier": { "allowed": false },
+      "code_actions_on_format": {
+        "source.fixAll.eslint": true
+      }
+    },
+    // ── JSON / JSONC ──────────────────────────────────────────
+    "JSON": {
+      "formatter": {
+        "language_server": { "name": "biome" }
+      },
+      "prettier": { "allowed": false }
+    },
+    "JSONC": {
+      "formatter": {
+        "language_server": { "name": "biome" }
+      },
+      "prettier": { "allowed": false }
+    },
+    // ── Markdown ──────────────────────────────────────────────
+    "Markdown": {
+      "formatter": {
+        "external": {
+          "command": "prettier",
+          "arguments": ["--stdin-filepath", "{buffer_path}"]
+        }
+      }
+    },
+    // ── YAML ──────────────────────────────────────────────────
+    "YAML": {
+      "formatter": {
+        "external": {
+          "command": "prettier",
+          "arguments": ["--stdin-filepath", "{buffer_path}"]
+        }
+      }
+    }
+  },
+
+  "lsp": {
+    "eslint": {
+      "settings": {
+        "workingDirectory": {
+          "mode": "auto"
+        }
+      }
+    }
+  }
+}
