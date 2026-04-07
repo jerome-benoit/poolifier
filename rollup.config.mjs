@@ -76,6 +76,7 @@ export default defineConfig([
           module: 'Node16',
           moduleResolution: 'Node16',
           sourceMap: sourcemap,
+          types: ['node'],
         },
         tsconfig: './tsconfig.build.json',
       }),
