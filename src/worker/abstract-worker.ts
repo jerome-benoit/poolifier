@@ -292,22 +292,22 @@ export abstract class AbstractWorker<
    */
   protected handleKillMessage (message: MessageValue<Data>): void {
     this.stopCheckActive()
-    if (isAsyncFunction(this.opts.killHandler)) {
-      ;(this.opts.killHandler as () => Promise<void>)()
-        .then(() => {
-          this.sendToMainWorker({ kill: 'success' })
-          return undefined
-        })
-        .catch(() => {
-          this.sendToMainWorker({ kill: 'failure' })
-        })
-    } else {
-      try {
-        ;(this.opts.killHandler as (() => void) | undefined)?.()
+    try {
+      const result = this.opts.killHandler?.()
+      if (result instanceof Promise) {
+        result
+          .then(() => {
+            this.sendToMainWorker({ kill: 'success' })
+            return undefined
+          })
+          .catch(() => {
+            this.sendToMainWorker({ kill: 'failure' })
+          })
+      } else {
         this.sendToMainWorker({ kill: 'success' })
-      } catch {
-        this.sendToMainWorker({ kill: 'failure' })
       }
+    } catch {
+      this.sendToMainWorker({ kill: 'failure' })
     }
   }
 
