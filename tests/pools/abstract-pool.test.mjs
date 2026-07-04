@@ -1585,55 +1585,64 @@ describe('Abstract pool test suite', () => {
     )
   })
 
-  it('Verify that destroy() waits until the tasks finished timeout is reached', async () => {
-    const tasksFinishedTimeout = 1000
-    const pool = new FixedThreadPool(
-      numberOfWorkers,
-      './tests/worker-files/thread/asyncWorker.mjs',
-      {
+  for (const { PoolClass, workerFilePath, workerType } of [
+    {
+      PoolClass: FixedClusterPool,
+      workerFilePath: './tests/worker-files/cluster/asyncWorker.cjs',
+      workerType: WorkerTypes.cluster,
+    },
+    {
+      PoolClass: FixedThreadPool,
+      workerFilePath: './tests/worker-files/thread/asyncWorker.mjs',
+      workerType: WorkerTypes.thread,
+    },
+  ]) {
+    it(`Verify that destroy() waits until the tasks finished timeout is reached in a ${workerType} pool`, async () => {
+      const tasksFinishedTimeout = 1000
+      const pool = new PoolClass(numberOfWorkers, workerFilePath, {
         enableTasksQueue: true,
         tasksQueueOptions: { tasksFinishedTimeout },
-      }
-    )
-    const maxMultiplier = 4
-    let tasksFinished = 0
-    for (const workerNode of pool.workerNodes) {
-      workerNode.on('taskFinished', () => {
-        ++tasksFinished
       })
-    }
-    // .catch collection — see preceding test for rationale.
-    const rejections = []
-    const promises = []
-    for (let i = 0; i < numberOfWorkers * maxMultiplier; i++) {
-      promises.push(
-        pool.execute().catch(e => {
-          rejections.push(e)
-          return undefined
+      const maxMultiplier = 4
+      let tasksFinished = 0
+      for (const workerNode of pool.workerNodes) {
+        workerNode.on('taskFinished', () => {
+          ++tasksFinished
         })
+      }
+      // .catch collection — see preceding test for rationale.
+      const rejections = []
+      const promises = []
+      for (let i = 0; i < numberOfWorkers * maxMultiplier; i++) {
+        promises.push(
+          pool.execute().catch(e => {
+            rejections.push(e)
+            return undefined
+          })
+        )
+      }
+      expect(pool.info.queuedTasks).toBeGreaterThan(0)
+      const startTime = performance.now()
+      await pool.destroy()
+      await Promise.allSettled(promises)
+      const elapsedTime = performance.now() - startTime
+      // New contract: rejectTaskPromise emits 'taskFinished' for each
+      // rejected in-flight task, so tasksFinished now reflects the number
+      // of rejected (terminated) tasks rather than zero.
+      expect(tasksFinished).toBe(rejections.length)
+      // Allow task timeout, 1000ms per kill response, and 100ms scheduling slack.
+      expect(elapsedTime).toBeLessThanOrEqual(
+        tasksFinishedTimeout + 1000 * tasksFinished + 1100
       )
-    }
-    expect(pool.info.queuedTasks).toBeGreaterThan(0)
-    const startTime = performance.now()
-    await pool.destroy()
-    await Promise.allSettled(promises)
-    const elapsedTime = performance.now() - startTime
-    // New contract: rejectTaskPromise emits 'taskFinished' for each
-    // rejected in-flight task, so tasksFinished now reflects the number
-    // of rejected (terminated) tasks rather than zero.
-    expect(tasksFinished).toBe(rejections.length)
-    // Worker kill message response timeout is 1000ms
-    expect(elapsedTime).toBeLessThanOrEqual(
-      tasksFinishedTimeout + 1000 * tasksFinished + 1000
-    )
-    expect(rejections.length).toBeGreaterThan(0)
-    expect(rejections.every(e => e instanceof WorkerTerminationError)).toBe(
-      true
-    )
-    expect(rejections.every(e => e.name === 'WorkerTerminationError')).toBe(
-      true
-    )
-  })
+      expect(rejections.length).toBeGreaterThan(0)
+      expect(rejections.every(e => e instanceof WorkerTerminationError)).toBe(
+        true
+      )
+      expect(rejections.every(e => e.name === 'WorkerTerminationError')).toBe(
+        true
+      )
+    })
+  }
 
   it('Verify that pool asynchronous resource track tasks execution', async () => {
     let taskAsyncId
