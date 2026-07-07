@@ -64,9 +64,11 @@ This method is available on both pool implementations and will start the minimum
 
 This method is available on both pool implementations and will call the terminate method on each worker. Concurrent calls all resolve when termination completes; calling `destroy()` after completion throws.
 
-In-flight tasks that do not finish within `tasksFinishedTimeout` (default `2000` ms; `tasksQueueOptions.tasksFinishedTimeout`) are rejected with a `WorkerTerminationError`. Attach a `.catch` to every `pool.execute()` you want to drain quietly; otherwise an unhandled rejection will be logged.
+When `pool.destroy()` begins, the pool stops accepting new work and does not redistribute queued tasks to other workers. Queued tasks still assigned to workers reject with a `WorkerTerminationError`.
 
-Workers that had at least one in-flight task at termination emit `PoolEvents.error` once with a `WorkerTerminationError` payload. Idle workers terminated voluntarily emit nothing.
+In-flight tasks that do not finish within `tasksFinishedTimeout` (default `2000` ms; `tasksQueueOptions.tasksFinishedTimeout`) are rejected with a `WorkerTerminationError`. If the worker exits unexpectedly during destroy teardown, in-flight tasks reject with a `WorkerCrashError`. Attach a `.catch` to every `pool.execute()` you want to drain quietly; otherwise an unhandled rejection will be logged.
+
+Each affected worker emits at most one `PoolEvents.error` during destroy teardown, preferring an in-flight `WorkerCrashError` over queued `WorkerTerminationError` payloads. Idle workers terminated voluntarily emit nothing.
 
 Dynamic workers self-evicting via `maxInactiveTime` while a task is still executing reject the task with `WorkerTerminationError` through the same path.
 
@@ -79,7 +81,9 @@ The pool rejects every in-flight task assigned to a worker that exits unexpected
 - signal kills (SIGKILL, SIGSEGV) and OOM-killer events on cluster workers;
 - crashes during worker startup.
 
-The rejection is a `WorkerCrashError` with `cause`, `exitCode`, `signal`, `workerId`, and `taskId` (set only when the crashed worker had an in-flight task at the time of crash). `PoolEvents.error` is emitted once per crash with a `WorkerCrashError` payload.
+Queued tasks assigned to the crashed worker are redistributed to ready peer workers when possible. Queued tasks that cannot be redistributed reject with `WorkerCrashError`.
+
+The rejection is a `WorkerCrashError` with `cause`, `exitCode`, `signal`, `workerId`, and `taskId`. `taskId` is set for each rejected queued or in-flight task. `PoolEvents.error` is emitted once per crash with a `WorkerCrashError` payload.
 
 Discriminate `WorkerCrashError` and `WorkerTerminationError` via `error.name` — this works across CJS and ESM imports of the package.
 
@@ -158,7 +162,7 @@ An object with these properties:
 
 - `startWorkers` (optional) - Start the minimum number of workers at pool initialization.  
   Default: `true`
-- `restartWorkerOnError` (optional) - Restart worker on uncaught error in this pool.  
+- `restartWorkerOnError` (optional) - Restart workers after abnormal exits. A clean exit with no in-flight task replenishes the pool minimum regardless of this option. A clean exit while a task is in-flight is treated as abnormal and follows this option.
   Default: `true`
 - `enableEvents` (optional) - Pool events integrated with async resource emission enablement.  
   Default: `true`
