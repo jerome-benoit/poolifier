@@ -80,5 +80,6 @@ tmp
 reports/
 benchmark-report.json
 .history/
+.codegraph
 .omo/
 .sisyphus/
