@@ -328,11 +328,11 @@ export interface PoolOptions<Worker extends IWorker> {
    */
   onlineHandler?: OnlineHandler<Worker>
   /**
-   * Restart worker on crashed exit (non-zero code or signal kill,
-   * including SIGKILL/SIGSEGV/OOM-killer). Clean exits (`exitCode === 0`)
-   * always replenish regardless of this option. In-flight task promises
-   * bound to a crashed worker always reject with `WorkerCrashError`
-   * regardless of this option.
+   * Restart workers after abnormal exits. A clean exit with no in-flight task
+   * replenishes the pool minimum regardless of this option. A clean exit while
+   * a task is in-flight is treated as abnormal and follows this option.
+   * In-flight task promises bound to an abnormal exit always reject with
+   * `WorkerCrashError` regardless of this option.
    * @defaultValue `true`
    */
   restartWorkerOnError?: boolean

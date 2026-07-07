@@ -61,7 +61,8 @@ export class WorkerCrashError extends Error {
 /**
  * Raised when a task promise is rejected because the pool initiated worker
  * termination while the task was still in-flight (`pool.destroy()` reached
- * its `tasksFinishedTimeout`, or a queued task could not be redistributed).
+ * its `tasksFinishedTimeout`) or while a queued task could not be
+ * redistributed, including queued tasks rejected during full pool destruction.
  */
 export class WorkerTerminationError extends Error {
   public readonly taskId?: TaskUUID
