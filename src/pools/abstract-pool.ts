@@ -1197,8 +1197,9 @@ export abstract class AbstractPool<
 
   /**
    * Terminates the worker node given its worker node key.
-   * Queued tasks are redistributed to ready peer workers; tasks that
-   * cannot be redistributed reject with {@link WorkerTerminationError}.
+   * Queued tasks are redistributed to ready peer workers for single-worker
+   * termination. During full pool destruction, queued tasks are not
+   * redistributed and reject with {@link WorkerTerminationError}.
    * In-flight task promises that do not complete within
    * `tasksFinishedTimeout` reject with {@link WorkerTerminationError},
    * or with {@link WorkerCrashError} if the worker exited abnormally
@@ -1210,6 +1211,7 @@ export abstract class AbstractPool<
     const workerNode = this.workerNodes[workerNodeKey]
     const stableWorkerId = workerNode.info.id
     let captureEnabled = true
+    let firstQueuedReject: undefined | WorkerCrashError | WorkerTerminationError
     let teardownCause: undefined | WorkerCrashError
     workerNode.registerOnceWorkerEventHandler('error', (error: Error) => {
       if (!captureEnabled || teardownCause != null) return
@@ -1231,8 +1233,10 @@ export abstract class AbstractPool<
     )
     workerNode.info.terminating = true
     try {
-      this.redistributeQueuedTasks(workerNodeKey)
-      const firstQueuedReject = this.rejectRemainingQueuedTaskPromises(
+      if (!this.destroying) {
+        this.redistributeQueuedTasks(workerNodeKey)
+      }
+      firstQueuedReject = this.rejectRemainingQueuedTaskPromises(
         workerNodeKey,
         taskId =>
           new WorkerTerminationError(
@@ -1240,9 +1244,6 @@ export abstract class AbstractPool<
             { taskId, workerId: stableWorkerId }
           )
       )
-      if (firstQueuedReject != null) {
-        this.safeEmitPoolError(firstQueuedReject)
-      }
       await waitWorkerNodeEvents(
         workerNode,
         'taskFinished',
@@ -1256,6 +1257,10 @@ export abstract class AbstractPool<
     } finally {
       captureEnabled = false
       const cause = teardownCause
+      let firstInFlightReject:
+        | undefined
+        | WorkerCrashError
+        | WorkerTerminationError
       try {
         const errorFactory =
           cause != null
@@ -1266,17 +1271,15 @@ export abstract class AbstractPool<
                   'Worker node terminated by pool (in-flight task did not complete within tasksFinishedTimeout)',
                   { taskId, workerId: stableWorkerId }
                 )
-        const firstReject = this.rejectInFlightTaskPromises(
+        firstInFlightReject = this.rejectInFlightTaskPromises(
           workerNode,
           stableWorkerId,
           errorFactory
         )
-        if (firstReject != null) {
-          this.safeEmitPoolError(firstReject)
-        }
       } catch (error) {
         this.safeEmitPoolError(error)
       }
+      this.safeEmitPoolError(firstInFlightReject ?? firstQueuedReject)
       const liveWorkerNodeKey = this.workerNodes.indexOf(workerNode)
       if (liveWorkerNodeKey !== -1) {
         await this.sendKillMessageToWorker(liveWorkerNodeKey).catch(
@@ -1320,9 +1323,10 @@ export abstract class AbstractPool<
 
   /**
    * Handles a crashed worker node.
-   * Rejects in-flight task promises, emits one `PoolEvents.error`,
-   * spawns a replacement dynamic worker when `restartWorkerOnError` is set,
-   * and redistributes queued tasks when `enableTasksQueue` is set.
+   * Rejects in-flight task promises, redistributes queued tasks when
+   * `enableTasksQueue` is set, rejects queued tasks that cannot be
+   * redistributed, emits one `PoolEvents.error`, and spawns a replacement
+   * dynamic worker when `restartWorkerOnError` is set.
    * No-op when `terminating`, `crashHandled`, or `destroying` is set.
    * @param workerNode - The crashed worker node.
    * @param cause - The crash cause.
@@ -1358,7 +1362,7 @@ export abstract class AbstractPool<
         firstQueuedReject = this.rejectRemainingQueuedTaskPromises(
           crashedWorkerNodeKey,
           crashErrorFactory
-        ) as undefined | WorkerCrashError
+        )
       }
     }
     this.safeEmitPoolError(
@@ -1480,13 +1484,13 @@ export abstract class AbstractPool<
    * @param errorFactory - The per-task error factory.
    * @returns The first rejection, or `undefined` when no in-flight task matched.
    */
-  protected rejectInFlightTaskPromises (
+  protected rejectInFlightTaskPromises<
+    ErrorType extends WorkerCrashError | WorkerTerminationError
+  >(
     workerNode: IWorkerNode<Worker, Data>,
     workerId: number | undefined,
-    errorFactory: (
-      taskId: TaskUUID
-    ) => WorkerCrashError | WorkerTerminationError
-  ): undefined | WorkerCrashError | WorkerTerminationError {
+    errorFactory: (taskId: TaskUUID) => ErrorType
+  ): ErrorType | undefined {
     if (workerId == null) {
       return undefined
     }
@@ -1496,7 +1500,7 @@ export abstract class AbstractPool<
         queuedTaskIds.add(task.taskId)
       }
     }
-    let firstError: undefined | WorkerCrashError | WorkerTerminationError
+    let firstError: ErrorType | undefined
     for (const [taskId, promiseResponse] of this.promiseResponseMap) {
       if (promiseResponse.workerId === workerId && !queuedTaskIds.has(taskId)) {
         const err = errorFactory(taskId)
@@ -2589,17 +2593,17 @@ export abstract class AbstractPool<
    * @returns The first rejection, or `undefined` if no queued tasks were
    * matched.
    */
-  private rejectRemainingQueuedTaskPromises (
+  private rejectRemainingQueuedTaskPromises<
+    ErrorType extends WorkerCrashError | WorkerTerminationError
+  >(
     workerNodeKey: number,
-    errorFactory: (
-      taskId: TaskUUID
-    ) => WorkerCrashError | WorkerTerminationError
-  ): undefined | WorkerCrashError | WorkerTerminationError {
+    errorFactory: (taskId: TaskUUID) => ErrorType
+  ): ErrorType | undefined {
     if (workerNodeKey === -1) {
       return undefined
     }
     const workerNode = this.workerNodes[workerNodeKey]
-    let firstError: undefined | WorkerCrashError | WorkerTerminationError
+    let firstError: ErrorType | undefined
     while (this.tasksQueueSize(workerNodeKey) > 0) {
       const task = this.dequeueTask(workerNodeKey)
       if (task?.taskId != null) {
@@ -2704,11 +2708,10 @@ export abstract class AbstractPool<
    * @param callback - The callback to run.
    * @param args - The arguments to pass to the callback.
    */
-  private runInAsyncScope (
+  private runInAsyncScope<Args extends unknown[]>(
     promiseResponse: PromiseResponseWrapper<Response>,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    callback: (...args: any[]) => void,
-    ...args: unknown[]
+    callback: (...args: Args) => void,
+    ...args: Args
   ): void {
     promiseResponse.asyncResource != null
       ? promiseResponse.asyncResource.runInAsyncScope(

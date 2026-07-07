@@ -26,6 +26,28 @@ describe('Crash recovery regression test suite', () => {
     pools.push(pool)
     return pool
   }
+  const waitUntil = async (predicate, timeout = 5_000) => {
+    const deadline = performance.now() + timeout
+    while (!predicate()) {
+      if (performance.now() >= deadline) {
+        throw new Error('Timed out waiting for condition')
+      }
+      await new Promise(resolve => setTimeout(resolve, 10))
+    }
+  }
+  const enqueueSyntheticTask = (pool, workerNodeKey, taskId, data) => {
+    const workerNode = pool.workerNodes[workerNodeKey]
+    const promise = new Promise((resolve, reject) => {
+      pool.promiseResponseMap.set(taskId, {
+        asyncResource: undefined,
+        reject,
+        resolve,
+        workerId: workerNode.info.id,
+      })
+    })
+    workerNode.enqueueTask({ data, taskId, timestamp: performance.now() })
+    return promise
+  }
   afterEach(async () => {
     while (pools.length > 0) {
       const pool = pools.pop()
@@ -948,15 +970,10 @@ describe('Crash recovery regression test suite', () => {
     await new Promise(resolve => {
       pool.emitter.once(PoolEvents.ready, resolve)
     })
-    const taskPromise = pool.execute()
+    const taskRejection = pool.execute().catch(e => e)
     await new Promise(resolve => setTimeout(resolve, 5))
     const destroyPromise = pool.destroy()
-    let rejected
-    try {
-      await taskPromise
-    } catch (e) {
-      rejected = e
-    }
+    const rejected = await taskRejection
     await destroyPromise
     expect(rejected).toBeInstanceOf(WorkerCrashError)
     expect(rejected.name).toBe('WorkerCrashError')
@@ -990,6 +1007,97 @@ describe('Crash recovery regression test suite', () => {
     expect(rejected).toBeInstanceOf(WorkerCrashError)
     await new Promise(resolve => setTimeout(resolve, 200))
     expect(pool.workerNodes.length).toBe(0)
+  })
+
+  it('T13h: full pool destroy rejects queued tasks without redistributing to ready peers', {
+    retry: 0,
+    timeout: 10_000,
+  }, async () => {
+    const pool = trackPool(
+      new FixedThreadPool(2, './tests/worker-files/thread/echoWorker.mjs', {
+        enableTasksQueue: true,
+        tasksQueueOptions: { tasksFinishedTimeout: 100 },
+      })
+    )
+    await new Promise(resolve => {
+      pool.emitter.once(PoolEvents.ready, resolve)
+    })
+    const taskId = '00000000-0000-0000-0000-000000000d13'
+    const sourceWorkerId = pool.workerNodes[0].info.id
+    const queuedOutcome = enqueueSyntheticTask(pool, 0, taskId, {
+      queued: true,
+    }).catch(e => e)
+    await pool.destroy()
+    const rejected = await queuedOutcome
+    expect(rejected).toBeInstanceOf(WorkerTerminationError)
+    expect(rejected.name).toBe('WorkerTerminationError')
+    expect(rejected.taskId).toBe(taskId)
+    expect(rejected.workerId).toBe(sourceWorkerId)
+  })
+
+  it('T13i: single worker destroy still redistributes queued tasks to ready peers', {
+    retry: 0,
+    timeout: 10_000,
+  }, async () => {
+    const pool = trackPool(
+      new FixedThreadPool(2, './tests/worker-files/thread/echoWorker.mjs', {
+        enableTasksQueue: true,
+        tasksQueueOptions: { tasksFinishedTimeout: 100 },
+      })
+    )
+    await new Promise(resolve => {
+      pool.emitter.once(PoolEvents.ready, resolve)
+    })
+    const queuedOutcome = enqueueSyntheticTask(
+      pool,
+      0,
+      '00000000-0000-0000-0000-000000000d14',
+      { redistributed: true }
+    )
+    await pool.destroyWorkerNode(0)
+    await expect(queuedOutcome).resolves.toStrictEqual({ redistributed: true })
+  })
+
+  it('T13j: destroy with queued plus crashing in-flight task emits one WorkerCrashError pool error', {
+    retry: 0,
+    timeout: 10_000,
+  }, async () => {
+    const pool = trackPool(
+      new FixedThreadPool(
+        1,
+        './tests/worker-files/thread/processExitWorker.mjs',
+        {
+          enableTasksQueue: true,
+          errorHandler: () => undefined,
+          tasksQueueOptions: { tasksFinishedTimeout: 5_000 },
+        }
+      )
+    )
+    await new Promise(resolve => {
+      pool.emitter.once(PoolEvents.ready, resolve)
+    })
+    const errorEvents = []
+    pool.emitter.on(PoolEvents.error, e => {
+      errorEvents.push(e)
+    })
+    const inFlightOutcome = pool.execute().catch(e => e)
+    const queuedOutcome = pool.execute().catch(e => e)
+    await waitUntil(
+      () =>
+        pool.workerNodes[0].usage.tasks.executing === 1 &&
+        pool.workerNodes[0].tasksQueueSize() === 1
+    )
+    const destroyPromise = pool.destroy()
+    const [inFlightRejected, queuedRejected] = await Promise.all([
+      inFlightOutcome,
+      queuedOutcome,
+    ])
+    await destroyPromise
+    expect(inFlightRejected).toBeInstanceOf(WorkerCrashError)
+    expect(queuedRejected).toBeInstanceOf(WorkerTerminationError)
+    expect(errorEvents.length).toBe(1)
+    expect(errorEvents[0]).toBeInstanceOf(WorkerCrashError)
+    expect(errorEvents[0].taskId).toBeDefined()
   })
 
   it('T-I5a: clean process.exit(0) replenishes even with restartWorkerOnError:false', {
