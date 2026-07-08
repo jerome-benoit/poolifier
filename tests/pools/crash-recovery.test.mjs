@@ -529,6 +529,7 @@ describe('Crash recovery regression test suite', () => {
     pool.emitter.on(PoolEvents.error, e => {
       errorEvents.push(e)
     })
+    const destroyWorkerNodeSpy = vi.spyOn(pool, 'destroyWorkerNode')
     const promises = [pool.execute(), pool.execute()]
     await waitUntil(
       () => pool.workerNodes.length === 2 && pool.promiseResponseMap.size === 2
@@ -537,10 +538,8 @@ describe('Crash recovery regression test suite', () => {
     await waitUntil(
       () => pool.promiseResponseMap.size === 0 && pool.workerNodes.length === 1
     )
-    expect(errorEvents.every(e => !(e instanceof WorkerCrashError))).toBe(true)
-    expect(errorEvents.every(e => !(e instanceof WorkerTerminationError))).toBe(
-      true
-    )
+    expect(errorEvents.length).toBe(0)
+    expect(destroyWorkerNodeSpy).toHaveBeenCalledTimes(1)
   })
 
   it('T8b: dynamic-eviction destroyWorkerNode WITH in-flight task rejects via WorkerTerminationError', {
@@ -585,6 +584,50 @@ describe('Crash recovery regression test suite', () => {
     expect(rejections[0]).toBeInstanceOf(WorkerTerminationError)
     expect(rejections[0].name).toBe('WorkerTerminationError')
     expect(rejections[0].taskId).toBeDefined()
+  })
+
+  it('T8c: queued abort rejects through async resource cleanup', {
+    retry: 0,
+    timeout: 10_000,
+  }, async () => {
+    const pool = trackPool(
+      new FixedThreadPool(1, './tests/worker-files/thread/hangWorker.mjs', {
+        enableTasksQueue: true,
+      })
+    )
+    await new Promise(resolve => {
+      pool.emitter.once(PoolEvents.ready, resolve)
+    })
+    const inFlight = pool.execute().catch(() => undefined)
+    const abortController = new AbortController()
+    const queued = pool.execute(undefined, undefined, abortController.signal)
+    await waitUntil(
+      () =>
+        pool.promiseResponseMap.size === 2 &&
+        pool.workerNodes[0].usage.tasks.executing === 1 &&
+        pool.workerNodes[0].tasksQueueSize() === 1
+    )
+    const queuedTask = [...pool.workerNodes[0].tasksQueue][0]
+    const promiseResponse = pool.promiseResponseMap.get(queuedTask.taskId)
+    expect(promiseResponse.asyncResource).toBeDefined()
+    const emitDestroySpy = vi.spyOn(
+      promiseResponse.asyncResource,
+      'emitDestroy'
+    )
+    const abortReason = new Error('Queued task aborted')
+    abortController.abort(abortReason)
+    let queuedRejected
+    try {
+      await queued
+    } catch (e) {
+      queuedRejected = e
+    }
+    expect(queuedRejected).toBeInstanceOf(Error)
+    expect(emitDestroySpy).toHaveBeenCalledTimes(1)
+    expect(pool.promiseResponseMap.has(queuedTask.taskId)).toBe(false)
+    expect(queuedRejected).toBe(abortReason)
+    await pool.destroy()
+    await inFlight
   })
 
   it('T9: second worker error event is a no-op (crashHandled write-once)', {

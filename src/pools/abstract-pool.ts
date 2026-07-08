@@ -1052,6 +1052,9 @@ export abstract class AbstractPool<
       const localWorkerNodeKey = this.getWorkerNodeKeyByWorkerId(
         message.workerId
       )
+      if (this.workerNodes[localWorkerNodeKey].info.terminating) {
+        return
+      }
       // Kill message received from worker
       if (
         isKillBehavior(KillBehaviors.HARD, message.kill) ||
@@ -1610,12 +1613,14 @@ export abstract class AbstractPool<
       return
     }
     const { taskId, workerId } = eventDetail
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    const promiseResponse = this.promiseResponseMap.get(taskId!)
+    if (taskId == null) {
+      return
+    }
+    const promiseResponse = this.promiseResponseMap.get(taskId)
     if (promiseResponse == null) {
       return
     }
-    const { abortSignal, reject } = promiseResponse
+    const { abortSignal } = promiseResponse
     if (abortSignal?.aborted === false) {
       return
     }
@@ -1633,11 +1638,14 @@ export abstract class AbstractPool<
         if (taskId === task.taskId && abortable === true) {
           workerNode.info.queuedTaskAbortion = true
           workerNode.deleteTask(task)
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          this.promiseResponseMap.delete(taskId!)
           workerNode.info.queuedTaskAbortion = false
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          reject(this.getAbortError(name!, taskId!))
+          this.rejectTaskPromise(
+            taskId,
+            promiseResponse,
+            workerNode,
+            this.getAbortError(name ?? DEFAULT_TASK_NAME, taskId),
+            false
+          )
           return
         }
       }
