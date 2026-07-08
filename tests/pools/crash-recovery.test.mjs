@@ -83,8 +83,11 @@ describe('Crash recovery regression test suite', () => {
         events.push(e)
       })
       const taskPromise = pool.execute()
-      // Give the dispatch IPC a moment to land before killing the worker.
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await waitUntil(
+        () =>
+          pool.promiseResponseMap.size === 1 &&
+          pool.workerNodes[0].usage.tasks.executing === 1
+      )
       const workerNode = pool.workerNodes[0]
       const workerId = workerNode.info.id
       const pid = workerNode.worker.process.pid
@@ -115,7 +118,11 @@ describe('Crash recovery regression test suite', () => {
         pool.emitter.once(PoolEvents.ready, resolve)
       })
       const taskPromise = pool.execute()
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await waitUntil(
+        () =>
+          pool.promiseResponseMap.size === 1 &&
+          pool.workerNodes[0].usage.tasks.executing === 1
+      )
       const workerNode = pool.workerNodes[0]
       const workerId = workerNode.info.id
       workerNode.worker.kill()
@@ -330,7 +337,11 @@ describe('Crash recovery regression test suite', () => {
     taskPromise.catch(e => {
       rejected = e
     })
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await waitUntil(
+      () =>
+        pool.promiseResponseMap.size === 1 &&
+        pool.workerNodes[0].usage.tasks.executing === 1
+    )
     await pool.destroy()
     await taskPromise.catch(() => undefined)
     expect(rejected).toBeInstanceOf(WorkerTerminationError)
@@ -360,7 +371,11 @@ describe('Crash recovery regression test suite', () => {
       rejections.push(e)
       return undefined
     })
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await waitUntil(
+      () =>
+        pool.promiseResponseMap.size === 1 &&
+        pool.workerNodes[0].usage.tasks.executing === 1
+    )
     await pool.destroy()
     await Promise.allSettled([promise])
     expect(rejections.length).toBe(1)
@@ -389,7 +404,11 @@ describe('Crash recovery regression test suite', () => {
     taskPromise.catch(e => {
       rejected = e
     })
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await waitUntil(
+      () =>
+        pool.promiseResponseMap.size === 1 &&
+        pool.workerNodes[0].usage.tasks.executing === 1
+    )
     expect(pool.workerNodes[0].usage.tasks.executing).toBe(1)
     expect(pool.workerNodes[0].tasksQueueSize()).toBe(0)
     const start = Date.now()
@@ -425,7 +444,11 @@ describe('Crash recovery regression test suite', () => {
       errorEvents.push(e)
     })
     const taskPromise = pool.execute()
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await waitUntil(
+      () =>
+        pool.promiseResponseMap.size === 1 &&
+        pool.workerNodes[0].usage.tasks.executing === 1
+    )
     expect(pool.workerNodes[0].usage.tasks.executing).toBe(1)
     const start = Date.now()
     await pool.destroy()
@@ -461,7 +484,19 @@ describe('Crash recovery regression test suite', () => {
         })
       )
     }
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await waitUntil(
+      () =>
+        pool.promiseResponseMap.size === N &&
+        pool.workerNodes.reduce(
+          (total, workerNode) => total + workerNode.usage.tasks.executing,
+          0
+        ) === 2 &&
+        pool.workerNodes.reduce(
+          (total, workerNode) => total + workerNode.tasksQueueSize(),
+          0
+        ) ===
+          N - 2
+    )
     await pool.destroy()
     await Promise.allSettled(promises)
     expect(rejections.length).toBe(N)
@@ -483,7 +518,7 @@ describe('Crash recovery regression test suite', () => {
       new DynamicThreadPool(
         1,
         2,
-        './tests/worker-files/thread/echoWorker.mjs',
+        './tests/worker-files/thread/asyncWorker.mjs',
         { errorHandler: () => undefined }
       )
     )
@@ -494,9 +529,14 @@ describe('Crash recovery regression test suite', () => {
     pool.emitter.on(PoolEvents.error, e => {
       errorEvents.push(e)
     })
-    await Promise.all([pool.execute(), pool.execute(), pool.execute()])
-    // Wait for any concurrent crash-emit microtasks to settle.
-    await new Promise(resolve => setTimeout(resolve, 50))
+    const promises = [pool.execute(), pool.execute()]
+    await waitUntil(
+      () => pool.workerNodes.length === 2 && pool.promiseResponseMap.size === 2
+    )
+    await Promise.all(promises)
+    await waitUntil(
+      () => pool.promiseResponseMap.size === 0 && pool.workerNodes.length === 1
+    )
     expect(errorEvents.every(e => !(e instanceof WorkerCrashError))).toBe(true)
     expect(errorEvents.every(e => !(e instanceof WorkerTerminationError))).toBe(
       true
@@ -527,7 +567,13 @@ describe('Crash recovery regression test suite', () => {
       rejections.push(e)
       return undefined
     })
-    await new Promise(resolve => setTimeout(resolve, 50))
+    await waitUntil(
+      () =>
+        pool.promiseResponseMap.size === 1 &&
+        pool.workerNodes.some(
+          workerNode => workerNode.usage.tasks.executing > 0
+        )
+    )
     const targetKey = pool.workerNodes.findIndex(
       wn => wn.usage.tasks.executing > 0
     )
@@ -662,7 +708,11 @@ describe('Crash recovery regression test suite', () => {
       rejections.push(e)
       return undefined
     })
-    await new Promise(resolve => setTimeout(resolve, 5))
+    await waitUntil(
+      () =>
+        pool.promiseResponseMap.size === 1 &&
+        pool.workerNodes[0].usage.tasks.executing === 1
+    )
     const destroyPromise = pool.destroy().catch(() => undefined)
     await Promise.allSettled([taskPromise, destroyPromise])
     expect(events.every(e => e != null)).toBe(true)
@@ -922,10 +972,14 @@ describe('Crash recovery regression test suite', () => {
       const workerNode = pool.workerNodes[0]
       const terminateSpy = vi.spyOn(workerNode, 'terminate')
       const taskPromise = pool.execute().catch(() => undefined)
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await waitUntil(
+        () =>
+          pool.promiseResponseMap.size === 1 &&
+          pool.workerNodes[0].usage.tasks.executing === 1
+      )
       process.kill(workerNode.worker.process.pid, 'SIGKILL')
       await taskPromise
-      await new Promise(resolve => setTimeout(resolve, 50))
+      await waitUntil(() => terminateSpy.mock.calls.length > 0)
       expect(terminateSpy).toHaveBeenCalled()
       terminateSpy.mockRestore()
     }
@@ -1001,7 +1055,11 @@ describe('Crash recovery regression test suite', () => {
       pool.emitter.once(PoolEvents.ready, resolve)
     })
     const taskRejection = pool.execute().catch(e => e)
-    await new Promise(resolve => setTimeout(resolve, 5))
+    await waitUntil(
+      () =>
+        pool.promiseResponseMap.size === 1 &&
+        pool.workerNodes[0].usage.tasks.executing === 1
+    )
     const destroyPromise = pool.destroy()
     const rejected = await taskRejection
     await destroyPromise
@@ -1035,7 +1093,7 @@ describe('Crash recovery regression test suite', () => {
       rejected = e
     }
     expect(rejected).toBeInstanceOf(WorkerCrashError)
-    await new Promise(resolve => setTimeout(resolve, 200))
+    await waitUntil(() => pool.workerNodes.length === 0)
     expect(pool.workerNodes.length).toBe(0)
   })
 
@@ -1246,15 +1304,10 @@ describe('Crash recovery regression test suite', () => {
     })
     const initialCount = pool.workerNodes.length
     expect(initialCount).toBe(1)
-    // cleanExitWorker fires process.exit(0); poll until replenishment.
-    const deadline = performance.now() + 5_000
-    while (
-      (pool.workerNodes.length !== 1 ||
-        pool.workerNodes[0].info.ready !== true) &&
-      performance.now() < deadline
-    ) {
-      await new Promise(resolve => setTimeout(resolve, 50))
-    }
+    // cleanExitWorker fires process.exit(0); wait until replenishment.
+    await waitUntil(
+      () => pool.workerNodes.length === 1 && pool.workerNodes[0].info.ready
+    )
     expect(pool.workerNodes.length).toBe(1)
     expect(pool.workerNodes[0].info.ready).toBe(true)
   })
@@ -1286,8 +1339,7 @@ describe('Crash recovery regression test suite', () => {
       rejected = e
     }
     expect(rejected).toBeInstanceOf(WorkerCrashError)
-    // Wait for any pending replenishment microtasks.
-    await new Promise(resolve => setTimeout(resolve, 200))
+    await waitUntil(() => pool.workerNodes.length === 0)
     expect(pool.workerNodes.length).toBe(0)
   })
 
@@ -1395,7 +1447,7 @@ describe('Crash recovery regression test suite', () => {
       rejected = e
     }
     expect(rejected).toBeInstanceOf(WorkerCrashError)
-    await new Promise(resolve => setTimeout(resolve, 200))
+    await waitUntil(() => pool.workerNodes.length === 0)
     expect(pool.workerNodes.length).toBe(0)
   })
 
