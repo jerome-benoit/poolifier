@@ -115,6 +115,11 @@ describe('Fixed cluster pool test suite', () => {
   it('Verify that tasks queuing is working', async () => {
     const promises = new Set()
     const maxMultiplier = 3 // Must be greater than tasksConcurrency
+    const queuedTasksPerWorker =
+      maxMultiplier - queuePool.opts.tasksQueueOptions.concurrency
+    const totalQueuedTasks = numberOfWorkers * queuedTasksPerWorker
+    const maxTasksExecutedByOneWorker =
+      queuePool.opts.tasksQueueOptions.concurrency + totalQueuedTasks
     for (let i = 0; i < numberOfWorkers * maxMultiplier; i++) {
       promises.add(queuePool.execute())
     }
@@ -125,12 +130,8 @@ describe('Fixed cluster pool test suite', () => {
         queuePool.opts.tasksQueueOptions.concurrency
       )
       expect(workerNode.usage.tasks.executed).toBe(0)
-      expect(workerNode.usage.tasks.queued).toBe(
-        maxMultiplier - queuePool.opts.tasksQueueOptions.concurrency
-      )
-      expect(workerNode.usage.tasks.maxQueued).toBe(
-        maxMultiplier - queuePool.opts.tasksQueueOptions.concurrency
-      )
+      expect(workerNode.usage.tasks.queued).toBe(queuedTasksPerWorker)
+      expect(workerNode.usage.tasks.maxQueued).toBe(queuedTasksPerWorker)
       expect(workerNode.usage.tasks.sequentiallyStolen).toBe(0)
       expect(workerNode.usage.tasks.stolen).toBe(0)
     }
@@ -138,14 +139,8 @@ describe('Fixed cluster pool test suite', () => {
     expect(queuePool.info.executingTasks).toBe(
       numberOfWorkers * queuePool.opts.tasksQueueOptions.concurrency
     )
-    expect(queuePool.info.queuedTasks).toBe(
-      numberOfWorkers *
-        (maxMultiplier - queuePool.opts.tasksQueueOptions.concurrency)
-    )
-    expect(queuePool.info.maxQueuedTasks).toBe(
-      numberOfWorkers *
-        (maxMultiplier - queuePool.opts.tasksQueueOptions.concurrency)
-    )
+    expect(queuePool.info.queuedTasks).toBe(totalQueuedTasks)
+    expect(queuePool.info.maxQueuedTasks).toBe(totalQueuedTasks)
     expect(queuePool.info.backPressure).toBe(false)
     expect(queuePool.info.stolenTasks).toBe(0)
     await Promise.all(promises)
@@ -154,41 +149,32 @@ describe('Fixed cluster pool test suite', () => {
       expect(workerNode.usage.tasks.executing).toBeLessThanOrEqual(
         numberOfWorkers * maxMultiplier
       )
-      // Per-worker `executed` and steal counters are non-deterministic
-      // because tasks-stealing-on-idle redistributes work across nodes;
-      // bounds reflect that distribution rather than exact equality.
+      // Task stealing can move any queued task to the first idle worker.
+      // Each worker executes at least its initial concurrency share and at
+      // most that share plus all queued tasks in the pool.
       expect(workerNode.usage.tasks.executed).toBeGreaterThanOrEqual(
         queuePool.opts.tasksQueueOptions.concurrency
       )
       expect(workerNode.usage.tasks.executed).toBeLessThanOrEqual(
-        numberOfWorkers *
-          (maxMultiplier - queuePool.opts.tasksQueueOptions.concurrency) +
-          queuePool.opts.tasksQueueOptions.concurrency
+        maxTasksExecutedByOneWorker
       )
       expect(workerNode.usage.tasks.queued).toBe(0)
-      expect(workerNode.usage.tasks.maxQueued).toBe(
-        maxMultiplier - queuePool.opts.tasksQueueOptions.concurrency
-      )
+      expect(workerNode.usage.tasks.maxQueued).toBe(queuedTasksPerWorker)
       expect(workerNode.usage.tasks.sequentiallyStolen).toBeGreaterThanOrEqual(
         0
       )
       expect(workerNode.usage.tasks.sequentiallyStolen).toBeLessThanOrEqual(
-        numberOfWorkers *
-          (maxMultiplier - queuePool.opts.tasksQueueOptions.concurrency)
+        totalQueuedTasks
       )
       expect(workerNode.usage.tasks.stolen).toBeGreaterThanOrEqual(0)
       expect(workerNode.usage.tasks.stolen).toBeLessThanOrEqual(
-        numberOfWorkers *
-          (maxMultiplier - queuePool.opts.tasksQueueOptions.concurrency)
+        totalQueuedTasks
       )
     }
     expect(queuePool.info.executedTasks).toBe(numberOfWorkers * maxMultiplier)
     expect(queuePool.info.backPressure).toBe(false)
     expect(queuePool.info.stolenTasks).toBeGreaterThanOrEqual(0)
-    expect(queuePool.info.stolenTasks).toBeLessThanOrEqual(
-      numberOfWorkers *
-        (maxMultiplier - queuePool.opts.tasksQueueOptions.concurrency)
-    )
+    expect(queuePool.info.stolenTasks).toBeLessThanOrEqual(totalQueuedTasks)
   })
 
   it('Verify that is possible to have a worker that return undefined', async () => {
