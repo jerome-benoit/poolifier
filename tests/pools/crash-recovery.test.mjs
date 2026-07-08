@@ -48,6 +48,12 @@ describe('Crash recovery regression test suite', () => {
     workerNode.enqueueTask({ data, taskId, timestamp: performance.now() })
     return promise
   }
+  const expectWorkerCrashErrorForWorker = (error, workerId) => {
+    expect(error).toBeInstanceOf(WorkerCrashError)
+    expect(error.name).toBe('WorkerCrashError')
+    expect(error.workerId).toBe(workerId)
+    expect(error.taskId).toBeDefined()
+  }
   afterEach(async () => {
     while (pools.length > 0) {
       const pool = pools.pop()
@@ -80,6 +86,7 @@ describe('Crash recovery regression test suite', () => {
       // Give the dispatch IPC a moment to land before killing the worker.
       await new Promise(resolve => setTimeout(resolve, 100))
       const workerNode = pool.workerNodes[0]
+      const workerId = workerNode.info.id
       const pid = workerNode.worker.process.pid
       process.kill(pid, 'SIGKILL')
       let rejected
@@ -88,13 +95,12 @@ describe('Crash recovery regression test suite', () => {
       } catch (e) {
         rejected = e
       }
-      expect(rejected).toBeInstanceOf(WorkerCrashError)
-      expect(rejected.name).toBe('WorkerCrashError')
+      expectWorkerCrashErrorForWorker(rejected, workerId)
       expect(rejected.exitCode).toBeNull()
       expect(rejected.signal).toBe('SIGKILL')
-      expect(rejected.taskId).toBeDefined()
       expect(events.length).toBe(1)
       expect(events[0]).toBeInstanceOf(WorkerCrashError)
+      expect(events[0].workerId).toBe(workerId)
     }
   )
 
@@ -111,6 +117,7 @@ describe('Crash recovery regression test suite', () => {
       const taskPromise = pool.execute()
       await new Promise(resolve => setTimeout(resolve, 100))
       const workerNode = pool.workerNodes[0]
+      const workerId = workerNode.info.id
       workerNode.worker.kill()
       let rejected
       try {
@@ -118,14 +125,12 @@ describe('Crash recovery regression test suite', () => {
       } catch (e) {
         rejected = e
       }
-      expect(rejected).toBeInstanceOf(WorkerCrashError)
-      expect(rejected.name).toBe('WorkerCrashError')
+      expectWorkerCrashErrorForWorker(rejected, workerId)
       if (rejected.exitCode != null) {
         expect(rejected.exitCode).not.toBe(0)
       } else {
         expect(rejected.signal).not.toBeNull()
       }
-      expect(rejected.taskId).toBeDefined()
     }
   )
 
@@ -142,17 +147,38 @@ describe('Crash recovery regression test suite', () => {
     await new Promise(resolve => {
       pool.emitter.once(PoolEvents.ready, resolve)
     })
+    const workerId = pool.workerNodes[0].info.id
     let rejected
     try {
       await pool.execute()
     } catch (e) {
       rejected = e
     }
-    expect(rejected).toBeInstanceOf(WorkerCrashError)
-    expect(rejected.name).toBe('WorkerCrashError')
+    expectWorkerCrashErrorForWorker(rejected, workerId)
     expect(rejected.exitCode).toBe(2)
     expect(rejected.signal).toBeNull()
-    expect(rejected.taskId).toBeDefined()
+  })
+
+  it('T2b: dynamic thread process.exit(N) rejects with workerId metadata', {
+    retry: 0,
+    timeout: 10_000,
+  }, async () => {
+    const pool = trackPool(
+      new DynamicThreadPool(
+        1,
+        2,
+        './tests/worker-files/thread/processExitWorker.mjs',
+        { errorHandler: () => undefined }
+      )
+    )
+    await new Promise(resolve => {
+      pool.emitter.once(PoolEvents.ready, resolve)
+    })
+    const workerId = pool.workerNodes[0].info.id
+    const rejected = await pool.execute().catch(e => e)
+    expectWorkerCrashErrorForWorker(rejected, workerId)
+    expect(rejected.exitCode).toBe(2)
+    expect(rejected.signal).toBeNull()
   })
 
   it('T3a: thread post-online crash rejects in-flight with WorkerCrashError', {
@@ -626,6 +652,7 @@ describe('Crash recovery regression test suite', () => {
     await new Promise(resolve => {
       pool.emitter.once(PoolEvents.ready, resolve)
     })
+    const workerId = pool.workerNodes[0].info.id
     const events = []
     pool.emitter.on(PoolEvents.error, e => {
       events.push(e)
@@ -647,6 +674,9 @@ describe('Crash recovery regression test suite', () => {
     expect(['WorkerCrashError', 'WorkerTerminationError']).toContain(
       rejections[0].name
     )
+    if (rejections[0] instanceof WorkerCrashError) {
+      expect(rejections[0].workerId).toBe(workerId)
+    }
   })
 
   it('T11b: rejectInFlightTaskPromises returns the first rejection without emitting', {
@@ -1058,6 +1088,55 @@ describe('Crash recovery regression test suite', () => {
     await expect(queuedOutcome).resolves.toStrictEqual({ redistributed: true })
   })
 
+  it('T13h-cluster: full cluster pool destroy rejects queued tasks without redistributing to ready peers', {
+    retry: 0,
+    timeout: 10_000,
+  }, async () => {
+    const pool = trackPool(
+      new FixedClusterPool(2, './tests/worker-files/cluster/echoWorker.cjs', {
+        enableTasksQueue: true,
+        tasksQueueOptions: { tasksFinishedTimeout: 100 },
+      })
+    )
+    await new Promise(resolve => {
+      pool.emitter.once(PoolEvents.ready, resolve)
+    })
+    const taskId = '00000000-0000-0000-0000-000000000d15'
+    const sourceWorkerId = pool.workerNodes[0].info.id
+    const queuedOutcome = enqueueSyntheticTask(pool, 0, taskId, {
+      queued: true,
+    }).catch(e => e)
+    await pool.destroy()
+    const rejected = await queuedOutcome
+    expect(rejected).toBeInstanceOf(WorkerTerminationError)
+    expect(rejected.name).toBe('WorkerTerminationError')
+    expect(rejected.taskId).toBe(taskId)
+    expect(rejected.workerId).toBe(sourceWorkerId)
+  })
+
+  it('T13i-cluster: single cluster worker destroy still redistributes queued tasks to ready peers', {
+    retry: 0,
+    timeout: 10_000,
+  }, async () => {
+    const pool = trackPool(
+      new FixedClusterPool(2, './tests/worker-files/cluster/echoWorker.cjs', {
+        enableTasksQueue: true,
+        tasksQueueOptions: { tasksFinishedTimeout: 100 },
+      })
+    )
+    await new Promise(resolve => {
+      pool.emitter.once(PoolEvents.ready, resolve)
+    })
+    const queuedOutcome = enqueueSyntheticTask(
+      pool,
+      0,
+      '00000000-0000-0000-0000-000000000d16',
+      { redistributed: true }
+    )
+    await pool.destroyWorkerNode(0)
+    await expect(queuedOutcome).resolves.toStrictEqual({ redistributed: true })
+  })
+
   it('T13j: destroy with queued plus crashing in-flight task emits one WorkerCrashError pool error', {
     retry: 0,
     timeout: 10_000,
@@ -1080,6 +1159,7 @@ describe('Crash recovery regression test suite', () => {
     pool.emitter.on(PoolEvents.error, e => {
       errorEvents.push(e)
     })
+    const workerId = pool.workerNodes[0].info.id
     const inFlightOutcome = pool.execute().catch(e => e)
     const queuedOutcome = pool.execute().catch(e => e)
     await waitUntil(
@@ -1094,9 +1174,58 @@ describe('Crash recovery regression test suite', () => {
     ])
     await destroyPromise
     expect(inFlightRejected).toBeInstanceOf(WorkerCrashError)
+    expect(inFlightRejected.workerId).toBe(workerId)
     expect(queuedRejected).toBeInstanceOf(WorkerTerminationError)
+    expect(queuedRejected.workerId).toBe(workerId)
     expect(errorEvents.length).toBe(1)
     expect(errorEvents[0]).toBeInstanceOf(WorkerCrashError)
+    expect(errorEvents[0].workerId).toBe(workerId)
+    expect(errorEvents[0].taskId).toBeDefined()
+  })
+
+  it('T13j-cluster: cluster destroy with queued plus crashing in-flight task emits one WorkerCrashError pool error', {
+    retry: 0,
+    timeout: 10_000,
+  }, async () => {
+    const pool = trackPool(
+      new FixedClusterPool(
+        1,
+        './tests/worker-files/cluster/processExitWorker.cjs',
+        {
+          enableTasksQueue: true,
+          errorHandler: () => undefined,
+          tasksQueueOptions: { tasksFinishedTimeout: 5_000 },
+        }
+      )
+    )
+    await new Promise(resolve => {
+      pool.emitter.once(PoolEvents.ready, resolve)
+    })
+    const errorEvents = []
+    pool.emitter.on(PoolEvents.error, e => {
+      errorEvents.push(e)
+    })
+    const workerId = pool.workerNodes[0].info.id
+    const inFlightOutcome = pool.execute().catch(e => e)
+    const queuedOutcome = pool.execute().catch(e => e)
+    await waitUntil(
+      () =>
+        pool.workerNodes[0].usage.tasks.executing === 1 &&
+        pool.workerNodes[0].tasksQueueSize() === 1
+    )
+    const destroyPromise = pool.destroy()
+    const [inFlightRejected, queuedRejected] = await Promise.all([
+      inFlightOutcome,
+      queuedOutcome,
+    ])
+    await destroyPromise
+    expect(inFlightRejected).toBeInstanceOf(WorkerCrashError)
+    expect(inFlightRejected.workerId).toBe(workerId)
+    expect(queuedRejected).toBeInstanceOf(WorkerTerminationError)
+    expect(queuedRejected.workerId).toBe(workerId)
+    expect(errorEvents.length).toBe(1)
+    expect(errorEvents[0]).toBeInstanceOf(WorkerCrashError)
+    expect(errorEvents[0].workerId).toBe(workerId)
     expect(errorEvents[0].taskId).toBeDefined()
   })
 
@@ -1208,16 +1337,37 @@ describe('Crash recovery regression test suite', () => {
     await new Promise(resolve => {
       pool.emitter.once(PoolEvents.ready, resolve)
     })
+    const workerId = pool.workerNodes[0].info.id
     let rejected
     try {
       await pool.execute()
     } catch (e) {
       rejected = e
     }
-    expect(rejected).toBeInstanceOf(WorkerCrashError)
-    expect(rejected.name).toBe('WorkerCrashError')
+    expectWorkerCrashErrorForWorker(rejected, workerId)
     expect(rejected.exitCode).toBe(2)
-    expect(rejected.taskId).toBeDefined()
+    expect(rejected.signal).toBeNull()
+  })
+
+  it('T2b-cluster: dynamic cluster process.exit(N) rejects with workerId metadata', {
+    retry: 0,
+    timeout: 10_000,
+  }, async () => {
+    const pool = trackPool(
+      new DynamicClusterPool(
+        1,
+        2,
+        './tests/worker-files/cluster/processExitWorker.cjs',
+        { errorHandler: () => undefined }
+      )
+    )
+    await new Promise(resolve => {
+      pool.emitter.once(PoolEvents.ready, resolve)
+    })
+    const workerId = pool.workerNodes[0].info.id
+    const rejected = await pool.execute().catch(e => e)
+    expectWorkerCrashErrorForWorker(rejected, workerId)
+    expect(rejected.exitCode).toBe(2)
   })
 
   it('T-I5b-cluster: cluster crash with restartWorkerOnError:false does NOT replenish', {
