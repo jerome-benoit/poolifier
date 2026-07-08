@@ -68,7 +68,7 @@ When `pool.destroy()` begins, the pool stops accepting new work and does not red
 
 In-flight tasks that do not finish within `tasksFinishedTimeout` (default `2000` ms; `tasksQueueOptions.tasksFinishedTimeout`) are rejected with a `WorkerTerminationError`. If the worker exits unexpectedly during destroy teardown, in-flight tasks reject with a `WorkerCrashError`. Attach a `.catch` to every `pool.execute()` you want to drain quietly; otherwise an unhandled rejection will be logged.
 
-Each affected worker emits at most one `PoolEvents.error` during destroy teardown, preferring an in-flight `WorkerCrashError` over queued `WorkerTerminationError` payloads. Idle workers terminated voluntarily emit nothing.
+Crash paths observed during destroy teardown are coalesced per worker and emit a typed `PoolEvents.error` when the pool can build one, preferring an in-flight `WorkerCrashError` over queued `WorkerTerminationError` payloads. Idle workers terminated voluntarily emit nothing.
 
 Dynamic workers self-evicting via `maxInactiveTime` while a task is still executing reject the task with `WorkerTerminationError` through the same path.
 
@@ -83,7 +83,7 @@ The pool rejects every in-flight task assigned to a worker that exits unexpected
 
 Queued tasks assigned to the crashed worker are redistributed to ready peer workers when possible. Queued tasks that cannot be redistributed reject with `WorkerCrashError`.
 
-The rejection is a `WorkerCrashError` with `cause`, `exitCode`, `signal`, `workerId`, and `taskId`. `taskId` is set for each rejected queued or in-flight task. `PoolEvents.error` is emitted once per crash with a `WorkerCrashError` payload.
+The rejection is a `WorkerCrashError` with `cause`, `exitCode`, `signal`, `workerId`, and `taskId`. `taskId` is set for each rejected queued or in-flight task. The pool emits `PoolEvents.error` with a representative `WorkerCrashError` payload for an observed crash; duplicate worker error and exit paths are coalesced.
 
 Discriminate `WorkerCrashError` and `WorkerTerminationError` via `error.name` — this works across CJS and ESM imports of the package.
 
@@ -135,7 +135,7 @@ An object with these properties:
   Default: `() => {}`
 - `errorHandler` (optional) - A function that will listen for error event on each worker.  
   Default: `() => {}`
-- `exitHandler` (optional) - A function that will listen for exit event on each worker.  
+- `exitHandler` (optional) - A function that will listen for exit event on each worker. The signature is `(exitCode: number | null, signal?: NodeJS.Signals | null) => void`; thread workers pass only `exitCode`, while cluster workers also pass `signal` when the worker was killed by a signal.
   Default: `() => {}`
 
 - `workerChoiceStrategy` (optional) - The default worker choice strategy to use in this pool:

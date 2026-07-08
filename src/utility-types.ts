@@ -70,7 +70,7 @@ export interface MessageValue<Data = unknown, ErrorData = unknown>
    */
   readonly workerError?: WorkerError<ErrorData>
   /**
-   * Worker id.
+   * Runtime worker id.
    */
   readonly workerId?: number
 }
@@ -98,8 +98,8 @@ export interface PromiseResponseWrapper<Response = unknown> {
    */
   readonly resolve: (value: PromiseLike<Response> | Response) => void
   /**
-   * Id of the worker currently bound to the in-flight task. Rewritten on
-   * steal / redistribute by replacing the {@link PromiseResponseWrapper}
+   * Runtime worker id currently bound to the in-flight task. Rewritten on
+   * steal or redistribute by replacing the {@link PromiseResponseWrapper}
    * entry in the pool's response map.
    */
   readonly workerId: number | undefined
