@@ -85,6 +85,8 @@ Queued tasks assigned to the crashed worker are redistributed to ready peer work
 
 The rejection is a `WorkerCrashError` with `cause`, `exitCode`, `signal`, `workerId`, and `taskId`. `taskId` is set for each rejected queued or in-flight task. The pool emits `PoolEvents.error` with a representative `WorkerCrashError` payload for an observed crash; duplicate worker error and exit paths are coalesced.
 
+If a `PoolEvents.error` listener throws, the listener exception is re-thrown asynchronously with `queueMicrotask` after the emit call returns. It does not synchronously abort crash or destroy cleanup and is not swallowed.
+
 Discriminate `WorkerCrashError` and `WorkerTerminationError` via `error.name` — this works across CJS and ESM imports of the package.
 
 > Cluster note: when a cluster worker throws, the original throw text is only available on the worker's stderr — it does not propagate to `error.cause`. Use `error.exitCode` and `error.signal` to inspect how the worker exited.
