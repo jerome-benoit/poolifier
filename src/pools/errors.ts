@@ -1,9 +1,5 @@
 /**
- * Pool-level typed error classes.
- *
- * `*Options` interfaces are file-scoped (`@internal`) for TS4063
- * declaration-emit compliance and are not re-exported from
- * `src/index.ts`. Discrimination contract: `docs/api.md`.
+ * Pool-level typed error classes for worker crash and termination paths.
  */
 
 import type { TaskUUID } from '../utility-types.js'
@@ -43,8 +39,7 @@ export class WorkerCrashError extends Error {
   public constructor (message: string, options: WorkerCrashErrorOptions = {}) {
     super(message, options.cause != null ? { cause: options.cause } : undefined)
     Object.setPrototypeOf(this, new.target.prototype)
-    // Non-writable per the `error.name` discrimination contract — see
-    // docs/api.md §"Error handling on worker crash".
+    // Non-writable per the documented `error.name` discrimination contract.
     Object.defineProperty(this, 'name', {
       configurable: false,
       enumerable: false,
@@ -73,8 +68,7 @@ export class WorkerTerminationError extends Error {
   ) {
     super(message, options.cause != null ? { cause: options.cause } : undefined)
     Object.setPrototypeOf(this, new.target.prototype)
-    // Non-writable per the `error.name` discrimination contract — see
-    // docs/api.md §"pool.destroy()".
+    // Non-writable per the documented `error.name` discrimination contract.
     Object.defineProperty(this, 'name', {
       configurable: false,
       enumerable: false,

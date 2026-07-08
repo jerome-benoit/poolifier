@@ -1424,7 +1424,7 @@ export abstract class AbstractPool<
 
   /**
    * Whether the given worker exit is abnormal or not.
-   * Clean `exit(0)` is abnormal when an in-flight task is still expected to settle on this worker.
+   * Clean `exit(0)` is abnormal while this worker still owns an unsettled in-flight task.
    * @param exitCode - The exit code.
    * @param signal - The exit signal.
    * @param workerId - The worker id.
