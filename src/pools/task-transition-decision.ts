@@ -38,7 +38,9 @@ export const decideTaskTransition = <Data, Response>(
     next === 'settled' ||
     (requiresLease && currentLease == null) ||
     (next === 'detached' && lease != null)
-  ) { return { ok: false } }
+  ) {
+    return { ok: false }
+  }
   return { currentLease, ok: true, previous: record.state }
 }
 
