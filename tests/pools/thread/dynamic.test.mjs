@@ -94,8 +94,10 @@ describe('Dynamic thread pool test suite', () => {
       }
     )
     await waitPoolEvents(concurrencyPool, PoolEvents.ready, 1)
-    await concurrencyPool.addTaskFunction('delayedResult', async data =>
-      await new Promise(resolve => setTimeout(() => resolve(data), 1000))
+    await concurrencyPool.addTaskFunction(
+      'delayedResult',
+      async data =>
+        await new Promise(resolve => setTimeout(() => resolve(data), 1000))
     )
     const busyEvents = []
     concurrencyPool.emitter.on(PoolEvents.busy, info => {
@@ -108,14 +110,12 @@ describe('Dynamic thread pool test suite', () => {
 
     expect(concurrencyPool.workerNodes).toHaveLength(2)
     expect(busyEvents).toHaveLength(0)
-    await expect.poll(() =>
-      concurrencyPool.workerNodes.every(workerNode => workerNode.info.ready)
-    ).toBe(true)
-    const busyEventPromise = waitPoolEvents(
-      concurrencyPool,
-      PoolEvents.busy,
-      1
-    )
+    await expect
+      .poll(() =>
+        concurrencyPool.workerNodes.every(workerNode => workerNode.info.ready)
+      )
+      .toBe(true)
+    const busyEventPromise = waitPoolEvents(concurrencyPool, PoolEvents.busy, 1)
     taskPromises.push(
       concurrencyPool.execute(undefined, 'delayedResult'),
       concurrencyPool.execute(undefined, 'delayedResult')

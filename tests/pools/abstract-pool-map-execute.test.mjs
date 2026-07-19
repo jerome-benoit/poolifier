@@ -1,4 +1,10 @@
-import { describe, DynamicThreadPool, expect, it, numberOfWorkers } from './abstract-pool-test-support.mjs'
+import {
+  describe,
+  DynamicThreadPool,
+  expect,
+  it,
+  numberOfWorkers,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that mapExecute() is working', async () => {

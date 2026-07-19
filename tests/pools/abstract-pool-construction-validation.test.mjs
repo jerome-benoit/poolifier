@@ -1,4 +1,14 @@
-import { describe, DynamicClusterPool, DynamicThreadPool, expect, FixedClusterPool, FixedThreadPool, it, numberOfWorkers, StubPoolWithIsMain } from './abstract-pool-test-support.mjs'
+import {
+  describe,
+  DynamicClusterPool,
+  DynamicThreadPool,
+  expect,
+  FixedClusterPool,
+  FixedThreadPool,
+  it,
+  numberOfWorkers,
+  StubPoolWithIsMain,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that pool can be created and destroyed', async () => {

@@ -5,11 +5,17 @@ import { verifyBusyStateAfterCrash } from './crash-recovery-event-support.mjs'
 import { createCrashRecoveryTestContext } from './crash-recovery-test-support.mjs'
 import { createCrashRecoveryThreadTransport } from './crash-recovery-transport-thread-support.mjs'
 
-const matrixIterations = Number(process.env.POOLIFIER_CRASH_RECOVERY_ITERATIONS ?? 10)
+const matrixIterations = Number(
+  process.env.POOLIFIER_CRASH_RECOVERY_ITERATIONS ?? 10
+)
 
-describe('T7 thread-only observable crash matrix', { retry: 0, timeout: 240_000 }, () => {
+describe('T7 thread-only observable crash matrix', {
+  retry: 0,
+  timeout: 240_000,
+}, () => {
   const { trackPool } = createCrashRecoveryTestContext()
-  const { closeInboxes, once, start } = createCrashRecoveryThreadTransport(trackPool)
+  const { closeInboxes, once, start } =
+    createCrashRecoveryThreadTransport(trackPool)
 
   afterEach(closeInboxes)
 
@@ -39,7 +45,9 @@ describe('T7 thread-only observable crash matrix', { retry: 0, timeout: 240_000 
     const reply = pool.execute({ action: 'reply-exit' })
     await expect(reply).resolves.toStrictEqual({ replied: true })
     await replacement
-    await expect(pool.execute({ action: 'echo' })).resolves.toMatchObject({ action: 'echo' })
+    await expect(pool.execute({ action: 'echo' })).resolves.toMatchObject({
+      action: 'echo',
+    })
 
     expect(errors).toStrictEqual([])
   })
@@ -49,7 +57,9 @@ describe('T7 thread-only observable crash matrix', { retry: 0, timeout: 240_000 
 
     for (let iteration = 0; iteration < matrixIterations; iteration++) {
       const replyReplacement = once(pool, PoolEvents.ready)
-      await expect(pool.execute({ action: 'reply-exit' })).resolves.toStrictEqual({ replied: true })
+      await expect(
+        pool.execute({ action: 'reply-exit' })
+      ).resolves.toStrictEqual({ replied: true })
       await replyReplacement
 
       const token = `crash-${iteration}`
@@ -66,11 +76,19 @@ describe('T7 thread-only observable crash matrix', { retry: 0, timeout: 240_000 
 
   it('ignores a delayed operation reply after its timeout', async () => {
     const { inbox, pool } = await start()
-    const operation = pool.addTaskFunction('matrixTimeout', data => data).catch(error => error)
-    const request = await inbox.take(message => message.name === 'matrixTimeout')
+    const operation = pool
+      .addTaskFunction('matrixTimeout', data => data)
+      .catch(error => error)
+    const request = await inbox.take(
+      message => message.name === 'matrixTimeout'
+    )
 
     expect((await operation).message).toContain('failed')
-    inbox.post({ action: 'ack', operationId: request.operationId, target: request.id })
+    inbox.post({
+      action: 'ack',
+      operationId: request.operationId,
+      target: request.id,
+    })
 
     expect(pool.hasTaskFunction('matrixTimeout')).toBe(false)
   })
@@ -79,17 +97,33 @@ describe('T7 thread-only observable crash matrix', { retry: 0, timeout: 240_000 
     const { inbox, pool } = await start()
     const operation = pool.addTaskFunction('matrixStale', data => data)
     const stale = await inbox.take(message => message.name === 'matrixStale')
-    inbox.post({ action: 'ack', operationId: stale.operationId, target: stale.id })
+    inbox.post({
+      action: 'ack',
+      operationId: stale.operationId,
+      target: stale.id,
+    })
     await expect(operation).resolves.toBe(true)
     inbox.post({ action: 'crash-task', target: stale.id })
-    const replay = await inbox.take(message => message.name === 'matrixStale' && message.id !== stale.id)
+    const replay = await inbox.take(
+      message => message.name === 'matrixStale' && message.id !== stale.id
+    )
 
-    inbox.post({ action: 'ack', operationId: stale.operationId, target: replay.id })
+    inbox.post({
+      action: 'ack',
+      operationId: stale.operationId,
+      target: replay.id,
+    })
     expect(pool.info.ready).toBe(false)
     const replacement = once(pool, PoolEvents.ready)
-    inbox.post({ action: 'ack', operationId: replay.operationId, target: replay.id })
+    inbox.post({
+      action: 'ack',
+      operationId: replay.operationId,
+      target: replay.id,
+    })
     await replacement
-    await expect(pool.execute({ value: 1 }, 'matrixStale')).resolves.toStrictEqual({ value: 1 })
+    await expect(
+      pool.execute({ value: 1 }, 'matrixStale')
+    ).resolves.toStrictEqual({ value: 1 })
   })
 
   it('fault with running and queued work rejects running and replays queued', async () => {
@@ -112,27 +146,53 @@ describe('T7 thread-only observable crash matrix', { retry: 0, timeout: 240_000 
   it('replays a committed operation when its ACK is followed by a crash', async () => {
     const { inbox, pool } = await start()
     const operation = pool.addTaskFunction('matrixAckCrash', data => data)
-    const request = await inbox.take(message => message.name === 'matrixAckCrash')
-    inbox.post({ action: 'ack', operationId: request.operationId, target: request.id })
+    const request = await inbox.take(
+      message => message.name === 'matrixAckCrash'
+    )
+    inbox.post({
+      action: 'ack',
+      operationId: request.operationId,
+      target: request.id,
+    })
     await operation
     inbox.post({ action: 'crash-task', target: request.id })
-    const replay = await inbox.take(message => message.name === 'matrixAckCrash' && message.id !== request.id)
+    const replay = await inbox.take(
+      message => message.name === 'matrixAckCrash' && message.id !== request.id
+    )
     const replacement = once(pool, PoolEvents.ready)
-    inbox.post({ action: 'ack', operationId: replay.operationId, target: replay.id })
+    inbox.post({
+      action: 'ack',
+      operationId: replay.operationId,
+      target: replay.id,
+    })
     await replacement
 
-    await expect(pool.execute({ replayed: true }, 'matrixAckCrash')).resolves.toStrictEqual({ replayed: true })
+    await expect(
+      pool.execute({ replayed: true }, 'matrixAckCrash')
+    ).resolves.toStrictEqual({ replayed: true })
   })
 
   it('single-worker NACK rolls back immediately', async () => {
     const { inbox, pool } = await start()
     const existing = pool.addTaskFunction('matrixExisting', data => data)
-    const existingRequest = await inbox.take(message => message.name === 'matrixExisting')
-    inbox.post({ action: 'ack', operationId: existingRequest.operationId, target: existingRequest.id })
+    const existingRequest = await inbox.take(
+      message => message.name === 'matrixExisting'
+    )
+    inbox.post({
+      action: 'ack',
+      operationId: existingRequest.operationId,
+      target: existingRequest.id,
+    })
     await existing
     const operation = pool.addTaskFunction('matrixCompensate', data => data)
-    const forward = await inbox.take(message => message.name === 'matrixCompensate')
-    inbox.post({ action: 'nack', operationId: forward.operationId, target: forward.id })
+    const forward = await inbox.take(
+      message => message.name === 'matrixCompensate'
+    )
+    inbox.post({
+      action: 'nack',
+      operationId: forward.operationId,
+      target: forward.id,
+    })
     await expect(operation).rejects.toThrow('failed')
 
     expect(pool.hasTaskFunction('matrixExisting')).toBe(true)
@@ -143,7 +203,9 @@ describe('T7 thread-only observable crash matrix', { retry: 0, timeout: 240_000 
     const { inbox, pool } = await start({
       size: 2,
     })
-    const operation = pool.setDefaultTaskFunction('matrixTarget').catch(error => error)
+    const operation = pool
+      .setDefaultTaskFunction('matrixTarget')
+      .catch(error => error)
     const forward = await Promise.all([
       inbox.take(message => message.name === 'matrixTarget'),
       inbox.take(message => message.name === 'matrixTarget'),
@@ -152,25 +214,41 @@ describe('T7 thread-only observable crash matrix', { retry: 0, timeout: 240_000 
     inbox.post({ action: 'ack', operationId, target: forward[0].id })
     inbox.post({ action: 'nack', operationId, target: forward[1].id })
 
-    await expect(operation).resolves.toMatchObject({ name: 'TaskFunctionTransactionError' })
+    await expect(operation).resolves.toMatchObject({
+      name: 'TaskFunctionTransactionError',
+    })
     expect(pool.listTaskFunctionsProperties()[1]?.name).toBe('execute')
   })
 
   it('does not dispatch before replacement catalog replay completes', async () => {
     const { inbox, pool } = await start()
     const add = pool.addTaskFunction('matrixReplayGate', data => data)
-    const added = await inbox.take(message => message.name === 'matrixReplayGate')
-    inbox.post({ action: 'ack-crash', operationId: added.operationId, target: added.id })
+    const added = await inbox.take(
+      message => message.name === 'matrixReplayGate'
+    )
+    inbox.post({
+      action: 'ack-crash',
+      operationId: added.operationId,
+      target: added.id,
+    })
     await add
-    const replay = await inbox.take(message => message.name === 'matrixReplayGate' && message.id !== added.id)
+    const replay = await inbox.take(
+      message => message.name === 'matrixReplayGate' && message.id !== added.id
+    )
     const execution = pool.execute({ gated: true }, 'matrixReplayGate')
     const race = await Promise.race([
-      inbox.take(message => message.event === 'dispatch').then(() => 'dispatched'),
+      inbox
+        .take(message => message.event === 'dispatch')
+        .then(() => 'dispatched'),
       Promise.resolve('blocked'),
     ])
     expect(race).toBe('blocked')
 
-    inbox.post({ action: 'ack', operationId: replay.operationId, target: replay.id })
+    inbox.post({
+      action: 'ack',
+      operationId: replay.operationId,
+      target: replay.id,
+    })
     await expect(execution).resolves.toStrictEqual({ gated: true })
   })
 })

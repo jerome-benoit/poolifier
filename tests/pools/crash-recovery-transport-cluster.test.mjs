@@ -303,7 +303,9 @@ describe('T8 cluster-only observable crash matrix', {
         if (
           message.taskFunctionOperationId === acknowledgedOperation.id &&
           message.taskFunctionOperationStatus === true
-        ) { acknowledged.resolve() }
+        ) {
+          acknowledged.resolve()
+        }
       },
       size: 2,
     })
@@ -462,7 +464,9 @@ describe('T8 cluster-only observable crash matrix', {
         if (
           message.taskFunctionOperationId === acknowledgedOperation.id &&
           message.taskFunctionOperationStatus === true
-        ) { acknowledged.resolve() }
+        ) {
+          acknowledged.resolve()
+        }
       },
     })
     const register = vi.spyOn(pool.taskScheduler, 'register')
@@ -525,7 +529,9 @@ describe('T8 cluster-only observable crash matrix', {
         if (
           message.taskFunctionOperationId === acknowledgedOperationId.value &&
           message.taskFunctionOperationStatus === true
-        ) { acknowledged.resolve() }
+        ) {
+          acknowledged.resolve()
+        }
       },
       size: 2,
     })
@@ -561,7 +567,9 @@ describe('T8 cluster-only observable crash matrix', {
       if (
         error instanceof WorkerCrashError ||
         error.message === 'crash after ACK'
-      ) { return }
+      ) {
+        return
+      }
       replacementError.resolve({ error, kind: 'replacement-error' })
     }
     pool.emitter.on(PoolEvents.error, onReplacementError)

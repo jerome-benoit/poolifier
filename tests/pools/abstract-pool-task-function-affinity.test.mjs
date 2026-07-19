@@ -1,4 +1,12 @@
-import { describe, DynamicThreadPool, expect, it, numberOfWorkers, PoolEvents, waitPoolEvents } from './abstract-pool-test-support.mjs'
+import {
+  describe,
+  DynamicThreadPool,
+  expect,
+  it,
+  numberOfWorkers,
+  PoolEvents,
+  waitPoolEvents,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that addTaskFunction() with workerNodeKeys is working', async () => {
@@ -20,7 +28,9 @@ describe('Abstract pool test suite', () => {
         workerNodeKeys: [poolWorkerNodeKeys[0]],
       })
     ).resolves.toBe(true)
-    expect(dynamicThreadPool.taskFunctionStore.get('affinityEcho')).toStrictEqual({
+    expect(
+      dynamicThreadPool.taskFunctionStore.get('affinityEcho')
+    ).toStrictEqual({
       taskFunction: echoTaskFunction,
       workerNodeKeys: [poolWorkerNodeKeys[0]],
     })

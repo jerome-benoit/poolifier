@@ -39,7 +39,9 @@ export class ScheduleResultAdapter<Worker extends EventEmitter, Data> {
   public apply (result: ScheduleResult<Worker>, owner?: LifecycleOwner): void {
     switch (result.kind) {
       case 'retry':
-        if (result.error != null) { this.callbacks.publisher.defer(result.error, owner) }
+        if (result.error != null) {
+          this.callbacks.publisher.defer(result.error, owner)
+        }
         return
       case 'settled':
         this.applySettlement(result, owner)

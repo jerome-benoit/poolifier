@@ -14,11 +14,13 @@ export const createHooks = () => ({
   publishError: vi.fn(),
   reject: vi.fn(() => true),
   replenishFixed: vi.fn(),
-  reserve: vi.fn((taskIds, lease) => taskIds.map(taskId => ({
-    lease,
-    previousState: 'running',
-    taskId,
-  }))),
+  reserve: vi.fn((taskIds, lease) =>
+    taskIds.map(taskId => ({
+      lease,
+      previousState: 'running',
+      taskId,
+    }))
+  ),
   restartWorkerOnError: vi.fn(() => true),
   restore: vi.fn(() => []),
   rollbackStartup: vi.fn(),

@@ -105,7 +105,11 @@ const terminateClusterWorker = async (
   }
   try {
     if (requestFailure == null) {
-      const selected = await Promise.race([exit.promise, disconnect.promise, grace])
+      const selected = await Promise.race([
+        exit.promise,
+        disconnect.promise,
+        grace,
+      ])
       if (selected.kind === 'exit') return
     }
     const hardStopGrace = createGrace()

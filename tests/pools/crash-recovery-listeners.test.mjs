@@ -1,7 +1,11 @@
 import { spawnSync } from 'node:child_process'
 import { describe, expect, it, vi } from 'vitest'
 
-import { FixedThreadPool, PoolEvents, WorkerCrashError } from '../../lib/index.mjs'
+import {
+  FixedThreadPool,
+  PoolEvents,
+  WorkerCrashError,
+} from '../../lib/index.mjs'
 import { createCrashRecoveryTestContext } from './crash-recovery-test-support.mjs'
 
 describe('Crash recovery regression test suite', () => {
@@ -26,47 +30,47 @@ describe('Crash recovery regression test suite', () => {
     return { child, records }
   }
 
-  it.each([
-    'error-handler',
-    'exit-handler',
-    'pool-error-listener',
-  ])('T14: %s throw is rethrown once only after typed settlement and cleanup', {
-    retry: 0,
-    timeout: 15_000,
-  }, scenario => {
-    const { child, records } = runHandlerThrowChild(scenario)
-    expect(child.error).toBeUndefined()
-    expect(child.status).not.toBe(0)
-    expect(records).toHaveLength(1)
-    expect(records[0].marker).toBe('single-throw-monitor')
-    expect(records[0].exactIdentity).toBe(true)
-    expect(records[0].uncaughtCount).toBe(1)
-    expect(records[0].executingTasks).toBe(0)
-    expect(records[0].queuedTasks).toBe(0)
-    expect(records[0].originalWorkerRemoved).toBe(true)
-    expect(records[0].taskOutcome.typed).toBe(true)
-    expect(records[0].taskOutcome.workerId).toBeDefined()
-    expect(records[0].callbackRecords.every(record => record.sameThis)).toBe(
-      true
-    )
-    for (const record of records[0].callbackRecords) {
-      if (record.surface === 'errorHandler') {
-        expect(record.args).toStrictEqual(['Simulated worker crash'])
-      } else if (record.surface === 'exitHandler') {
-        expect(record.args).toHaveLength(2)
-        expect(record.args[1]).toBeNull()
-      } else {
-        expect(['WorkerCrashError', 'WorkerTerminationError']).toContain(
-          record.args[0]
-        )
+  it.each(['error-handler', 'exit-handler', 'pool-error-listener'])(
+    'T14: %s throw is rethrown once only after typed settlement and cleanup',
+    {
+      retry: 0,
+      timeout: 15_000,
+    },
+    scenario => {
+      const { child, records } = runHandlerThrowChild(scenario)
+      expect(child.error).toBeUndefined()
+      expect(child.status).not.toBe(0)
+      expect(records).toHaveLength(1)
+      expect(records[0].marker).toBe('single-throw-monitor')
+      expect(records[0].exactIdentity).toBe(true)
+      expect(records[0].uncaughtCount).toBe(1)
+      expect(records[0].executingTasks).toBe(0)
+      expect(records[0].queuedTasks).toBe(0)
+      expect(records[0].originalWorkerRemoved).toBe(true)
+      expect(records[0].taskOutcome.typed).toBe(true)
+      expect(records[0].taskOutcome.workerId).toBeDefined()
+      expect(records[0].callbackRecords.every(record => record.sameThis)).toBe(
+        true
+      )
+      for (const record of records[0].callbackRecords) {
+        if (record.surface === 'errorHandler') {
+          expect(record.args).toStrictEqual(['Simulated worker crash'])
+        } else if (record.surface === 'exitHandler') {
+          expect(record.args).toHaveLength(2)
+          expect(record.args[1]).toBeNull()
+        } else {
+          expect(['WorkerCrashError', 'WorkerTerminationError']).toContain(
+            record.args[0]
+          )
+        }
+      }
+      if (scenario === 'pool-error-listener') {
+        expect(records[0].destroying).toBe(false)
+        expect(records[0].started).toBe(false)
+        expect(records[0].workerNodes).toBe(0)
       }
     }
-    if (scenario === 'pool-error-listener') {
-      expect(records[0].destroying).toBe(false)
-      expect(records[0].started).toBe(false)
-      expect(records[0].workerNodes).toBe(0)
-    }
-  })
+  )
 
   it('T14b: combined listener throws retain identity without duplicate drains', {
     retry: 0,
@@ -91,24 +95,25 @@ describe('Crash recovery regression test suite', () => {
     )
   })
 
-  it.each([
-    'no-listener',
-    'non-throwing',
-  ])('T14c: %s control schedules no uncaught exception', {
-    retry: 0,
-    timeout: 15_000,
-  }, scenario => {
-    const { child, records } = runHandlerThrowChild(scenario)
-    expect(child.error).toBeUndefined()
-    expect(child.status).toBe(0)
-    expect(child.stderr).toBe('')
-    expect(records).toHaveLength(1)
-    expect(records[0].marker).toBe('control-final')
-    expect(records[0].uncaughtCount).toBe(0)
-    expect(records[0].executingTasks).toBe(0)
-    expect(records[0].queuedTasks).toBe(0)
-    expect(records[0].workerNodes).toBe(0)
-  })
+  it.each(['no-listener', 'non-throwing'])(
+    'T14c: %s control schedules no uncaught exception',
+    {
+      retry: 0,
+      timeout: 15_000,
+    },
+    scenario => {
+      const { child, records } = runHandlerThrowChild(scenario)
+      expect(child.error).toBeUndefined()
+      expect(child.status).toBe(0)
+      expect(child.stderr).toBe('')
+      expect(records).toHaveLength(1)
+      expect(records[0].marker).toBe('control-final')
+      expect(records[0].uncaughtCount).toBe(0)
+      expect(records[0].executingTasks).toBe(0)
+      expect(records[0].queuedTasks).toBe(0)
+      expect(records[0].workerNodes).toBe(0)
+    }
+  )
 
   it('T14d: in-process crash settles before one captured handler throw drains', {
     retry: 0,

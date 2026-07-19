@@ -30,8 +30,12 @@ describe('TaskFunctionTransactionManager', () => {
       await fixture.manager.add('one', taskFunction('one'))
       const before = fixture.manager.snapshot.revision
 
-      if (operation === 'add') { await fixture.manager.add('two', taskFunction('two')) }
-      if (operation === 'replace') { await fixture.manager.add('one', taskFunction('replacement')) }
+      if (operation === 'add') {
+        await fixture.manager.add('two', taskFunction('two'))
+      }
+      if (operation === 'replace') {
+        await fixture.manager.add('one', taskFunction('replacement'))
+      }
       if (operation === 'remove') await fixture.manager.remove('one')
       if (operation === 'default') await fixture.manager.setDefault('one')
 

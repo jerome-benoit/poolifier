@@ -24,7 +24,10 @@ export class TaskFunctionCatalog<Data = unknown, Response = unknown> {
     this.#entries = entries
   }
 
-  public static empty<Data = unknown, Response = unknown> (): TaskFunctionCatalog<Data, Response> {
+  public static empty<
+    Data = unknown,
+    Response = unknown
+  >(): TaskFunctionCatalog<Data, Response> {
     return new TaskFunctionCatalog(new Map(), DEFAULT_TASK_NAME, 0)
   }
 

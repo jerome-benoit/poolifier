@@ -3,9 +3,7 @@ import { Worker as ThreadWorker } from 'node:worker_threads'
 import { describe, expect, it } from 'vitest'
 
 import { CircularBuffer } from '../../lib/circular-buffer.mjs'
-import {
-  WorkerTypes,
-} from '../../lib/index.mjs'
+import { WorkerTypes } from '../../lib/index.mjs'
 import {
   checkValidWorkerNodeKeys,
   createWorker,
@@ -127,7 +125,11 @@ describe('Pool worker utils test suite', () => {
       average: true,
       median: true,
     }
-    updateMeasurementStatistics(measurementStatistics, measurementRequirements, 4)
+    updateMeasurementStatistics(
+      measurementStatistics,
+      measurementRequirements,
+      4
+    )
     updateMeasurementStatistics(
       measurementStatistics,
       measurementRequirements,

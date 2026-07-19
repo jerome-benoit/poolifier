@@ -1,4 +1,14 @@
-import { describe, expect, FixedClusterPool, FixedThreadPool, it, numberOfWorkers, ready, WorkerTerminationError, WorkerTypes } from './abstract-pool-test-support.mjs'
+import {
+  describe,
+  expect,
+  FixedClusterPool,
+  FixedThreadPool,
+  it,
+  numberOfWorkers,
+  ready,
+  WorkerTerminationError,
+  WorkerTypes,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that destroy() waits for queued tasks to finish', async () => {

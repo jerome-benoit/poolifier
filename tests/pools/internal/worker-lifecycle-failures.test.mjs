@@ -7,51 +7,51 @@ describe('Worker lifecycle failure ordering', () => {
   it.each([
     ['fixed', false],
     ['dynamic', true],
-  ])('captures the exact %s replacement failure and completes recovery', async (
-    _kind,
-    dynamic
-  ) => {
-    const replacementFailure = { dynamic }
-    const restore = vi.fn()
-    const finalizeResidual = vi.fn()
-    const drain = vi.fn()
-    const replace = vi.fn(() => {
-      throw replacementFailure
-    })
-    const coordinator = new WorkerLifecycleCoordinator({
-      complete: vi.fn(),
-      drain,
-      exclude: vi.fn(),
-      isPoolRunning: () => true,
-      reconcile: () => ({
-        finalizeResidual,
-        prepare: vi.fn(),
-        restore,
-      }),
-      remove: vi.fn(),
-      replace,
-      shouldReplace: () => true,
-      snapshotOwnedWork: () => [],
-      terminate: vi.fn(),
-    })
-    const handle = register(coordinator, worker(1, dynamic))
+  ])(
+    'captures the exact %s replacement failure and completes recovery',
+    async (_kind, dynamic) => {
+      const replacementFailure = { dynamic }
+      const restore = vi.fn()
+      const finalizeResidual = vi.fn()
+      const drain = vi.fn()
+      const replace = vi.fn(() => {
+        throw replacementFailure
+      })
+      const coordinator = new WorkerLifecycleCoordinator({
+        complete: vi.fn(),
+        drain,
+        exclude: vi.fn(),
+        isPoolRunning: () => true,
+        reconcile: () => ({
+          finalizeResidual,
+          prepare: vi.fn(),
+          restore,
+        }),
+        remove: vi.fn(),
+        replace,
+        shouldReplace: () => true,
+        snapshotOwnedWork: () => [],
+        terminate: vi.fn(),
+      })
+      const handle = register(coordinator, worker(1, dynamic))
 
-    const reconciliation = coordinator.fault(handle, new Error('crash'))
-    const duplicate = coordinator.fault(handle, new Error('duplicate'))
-    const error = await reconciliation.catch(value => value)
+      const reconciliation = coordinator.fault(handle, new Error('crash'))
+      const duplicate = coordinator.fault(handle, new Error('duplicate'))
+      const error = await reconciliation.catch(value => value)
 
-    expect(duplicate).toBe(reconciliation)
-    expect(error.stage).toBe('replace')
-    expect(error.cause).toBe(replacementFailure)
-    expect(error.failures).toStrictEqual([
-      { error: replacementFailure, stage: 'replace' },
-    ])
-    expect(restore).toHaveBeenCalledOnce()
-    expect(drain).toHaveBeenCalledOnce()
-    expect(finalizeResidual).toHaveBeenCalledOnce()
-    expect(replace).toHaveBeenCalledOnce()
-    expect(coordinator.state(handle)).toBe('removed')
-  })
+      expect(duplicate).toBe(reconciliation)
+      expect(error.stage).toBe('replace')
+      expect(error.cause).toBe(replacementFailure)
+      expect(error.failures).toStrictEqual([
+        { error: replacementFailure, stage: 'replace' },
+      ])
+      expect(restore).toHaveBeenCalledOnce()
+      expect(drain).toHaveBeenCalledOnce()
+      expect(finalizeResidual).toHaveBeenCalledOnce()
+      expect(replace).toHaveBeenCalledOnce()
+      expect(coordinator.state(handle)).toBe('removed')
+    }
+  )
 
   it.each([
     'exclude',

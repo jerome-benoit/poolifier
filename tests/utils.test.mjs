@@ -105,7 +105,9 @@ describe('Utils test suite', () => {
 
   it('computes finite even medians when finite midpoints overflow', () => {
     expect(median([Number.MAX_VALUE, Number.MAX_VALUE])).toBe(Number.MAX_VALUE)
-    expect(median([-Number.MAX_VALUE, -Number.MAX_VALUE])).toBe(-Number.MAX_VALUE)
+    expect(median([-Number.MAX_VALUE, -Number.MAX_VALUE])).toBe(
+      -Number.MAX_VALUE
+    )
   })
 
   it('Verify round() behavior', () => {

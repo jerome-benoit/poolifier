@@ -134,6 +134,8 @@ describe('WorkerReconciler dynamic transition', () => {
       callbacks.drain,
       recovery.finalizeResidual,
       finalize,
-    ]) expect(phase).toHaveBeenCalledOnce()
+    ]) {
+      expect(phase).toHaveBeenCalledOnce()
+    }
   })
 })

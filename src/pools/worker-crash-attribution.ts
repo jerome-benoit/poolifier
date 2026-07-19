@@ -17,8 +17,7 @@ export const getWorkerCrashAttribution = (
       activeTaskIds.add(reservation.taskId)
     }
   }
-  const attributedTaskId = activeTaskIds.size === 1
-    ? [...activeTaskIds][0]
-    : undefined
+  const attributedTaskId =
+    activeTaskIds.size === 1 ? [...activeTaskIds][0] : undefined
   return { activeTaskIds, attributedTaskId }
 }

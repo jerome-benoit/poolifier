@@ -1,4 +1,13 @@
-import { createHook, describe, executionAsyncId, expect, FixedThreadPool, it, numberOfWorkers, PoolEvents } from './abstract-pool-test-support.mjs'
+import {
+  createHook,
+  describe,
+  executionAsyncId,
+  expect,
+  FixedThreadPool,
+  it,
+  numberOfWorkers,
+  PoolEvents,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that pool asynchronous resource track tasks execution', async () => {

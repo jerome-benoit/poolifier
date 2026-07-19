@@ -10,7 +10,11 @@ const createFixture = () => {
     quarantine: observation => quarantines.push(observation),
     reconcile: async observation => {
       reconciliations.push(observation)
-      return { ...observation, committed: true, lease: { generation: 1, id: 1 } }
+      return {
+        ...observation,
+        committed: true,
+        lease: { generation: 1, id: 1 },
+      }
     },
     waitForTransportDrain: () => drain.promise,
   })
@@ -66,7 +70,10 @@ describe('TerminalSignalAggregator', () => {
 
     expect(firstResult).toBe(duplicateResult)
     expect(reconciliations).toHaveLength(1)
-    expect(reconciliations[0]).toMatchObject({ cause: error, exit: { code: 1 } })
+    expect(reconciliations[0]).toMatchObject({
+      cause: error,
+      exit: { code: 1 },
+    })
   })
 
   it('ignores terminal signals after drain reconciliation', async () => {

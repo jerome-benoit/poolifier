@@ -2,7 +2,10 @@ import { spawnSync } from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { FixedThreadPool, PoolEvents } from '../../lib/index.mjs'
-import { createPoolCleanup, echoThreadWorkerPath } from './crash-recovery-utils.mjs'
+import {
+  createPoolCleanup,
+  echoThreadWorkerPath,
+} from './crash-recovery-utils.mjs'
 
 describe('Worker termination grace behavior', () => {
   const { cleanupPools, trackPool } = createPoolCleanup()

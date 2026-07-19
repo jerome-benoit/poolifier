@@ -14,7 +14,9 @@ const runTask = taskFunction => {
   const worker = new ThreadWorker(taskFunction)
   worker.statistics = { elu: false, runTime: false }
   const response = Promise.withResolvers()
-  const sendToMainWorker = stub(worker, 'sendToMainWorker').callsFake(response.resolve)
+  const sendToMainWorker = stub(worker, 'sendToMainWorker').callsFake(
+    response.resolve
+  )
 
   worker.run(task)
 
@@ -31,13 +33,18 @@ describe('Abstract worker task settlement', () => {
 
     const { response, sendToMainWorker } = runTask(taskFunction)
 
-    await expect(response).resolves.toMatchObject({ data: 42, taskId: task.taskId })
+    await expect(response).resolves.toMatchObject({
+      data: 42,
+      taskId: task.taskId,
+    })
     expect(taskFunction.callCount).toBe(1)
     expect(sendToMainWorker.callCount).toBe(1)
   })
 
   it('settles a rejected Promise returned by a non-async task once', async () => {
-    const taskFunction = stub().returns(Promise.reject(new Error('rejected Promise')))
+    const taskFunction = stub().returns(
+      Promise.reject(new Error('rejected Promise'))
+    )
 
     const { response, sendToMainWorker } = runTask(taskFunction)
 
@@ -54,11 +61,16 @@ describe('Abstract worker task settlement', () => {
 
     const { response } = runTask(() => thenable)
 
-    await expect(response).resolves.toMatchObject({ data: 42, taskId: task.taskId })
+    await expect(response).resolves.toMatchObject({
+      data: 42,
+      taskId: task.taskId,
+    })
   })
 
   it('assimilates a rejecting thenable returned by a task', async () => {
-    const thenable = { then: (_resolve, reject) => reject(new Error('rejected thenable')) }
+    const thenable = {
+      then: (_resolve, reject) => reject(new Error('rejected thenable')),
+    }
 
     const { response } = runTask(() => thenable)
 
@@ -76,7 +88,10 @@ describe('Abstract worker task settlement', () => {
     worker.run(task)
 
     expect(sendToMainWorker.callCount).toBe(1)
-    expect(sendToMainWorker.firstCall.args[0]).toMatchObject({ data: 42, taskId: task.taskId })
+    expect(sendToMainWorker.firstCall.args[0]).toMatchObject({
+      data: 42,
+      taskId: task.taskId,
+    })
   })
 
   it('sends a synchronous throw before run returns', () => {

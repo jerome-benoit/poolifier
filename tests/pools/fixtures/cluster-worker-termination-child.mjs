@@ -16,7 +16,9 @@ if (cluster.isWorker) {
   cluster.setupPrimary({ exec: fileURLToPath(import.meta.url) })
   const target = cluster.fork()
   const targetExit = Promise.withResolvers()
-  const targetReady = new Promise(resolve => { target.once('message', resolve) })
+  const targetReady = new Promise(resolve => {
+    target.once('message', resolve)
+  })
   let cleanupForced = false
   let exitBeforeSettlement = false
   let exitCode
@@ -45,7 +47,9 @@ if (cluster.isWorker) {
       new Promise((_resolve, reject) => {
         signal.addEventListener(
           'abort',
-          () => { reject(new Error(`${label} timed out after ${timeout}ms`)) },
+          () => {
+            reject(new Error(`${label} timed out after ${timeout}ms`))
+          },
           { once: true }
         )
       }),
@@ -53,11 +57,7 @@ if (cluster.isWorker) {
   }
 
   try {
-    const ready = await bounded(
-      targetReady,
-      1000,
-      'target readiness'
-    )
+    const ready = await bounded(targetReady, 1000, 'target readiness')
     writeRecord(ready)
     const terminationOutcome = await bounded(
       terminateWorker(target, WorkerTypes.cluster, false).then(

@@ -21,10 +21,12 @@ describe('TaskFunctionStaticSchema', () => {
   it('rejects a schema without a concrete logical default', () => {
     const schema = new TaskFunctionStaticSchema()
 
-    expect(() => schema.validate([
-      { name: DEFAULT_TASK_NAME },
-      { name: DEFAULT_TASK_NAME },
-    ])).toThrow('Worker static task function default is invalid')
+    expect(() =>
+      schema.validate([
+        { name: DEFAULT_TASK_NAME },
+        { name: DEFAULT_TASK_NAME },
+      ])
+    ).toThrow('Worker static task function default is invalid')
     expect(schema.defaultName).toBeUndefined()
   })
 
@@ -35,9 +37,11 @@ describe('TaskFunctionStaticSchema', () => {
       { name: 'factorial', priority: 1 },
     ])
 
-    expect(() => schema.validate([
-      { name: DEFAULT_TASK_NAME },
-      { name: 'factorial', priority: 2 },
-    ])).toThrow('Worker static task function schema is inconsistent')
+    expect(() =>
+      schema.validate([
+        { name: DEFAULT_TASK_NAME },
+        { name: 'factorial', priority: 2 },
+      ])
+    ).toThrow('Worker static task function schema is inconsistent')
   })
 })

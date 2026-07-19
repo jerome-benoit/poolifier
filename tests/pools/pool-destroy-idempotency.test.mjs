@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
 import { FixedThreadPool, PoolEvents } from '../../lib/index.mjs'
-import { createPoolCleanup, echoThreadWorkerPath } from './crash-recovery-utils.mjs'
+import {
+  createPoolCleanup,
+  echoThreadWorkerPath,
+} from './crash-recovery-utils.mjs'
 
 describe('Pool destroy idempotency', () => {
   const { cleanupPools, trackPool } = createPoolCleanup()

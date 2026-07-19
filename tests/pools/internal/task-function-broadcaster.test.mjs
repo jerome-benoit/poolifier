@@ -71,14 +71,18 @@ describe('TaskFunctionBroadcaster', () => {
     const handle = { lease: { generation: 0, id: 7 }, worker: {} }
     const controller = new AbortController()
     const addAbortListener = vi.spyOn(controller.signal, 'addEventListener')
-    const removeAbortListener = vi.spyOn(controller.signal, 'removeEventListener')
+    const removeAbortListener = vi.spyOn(
+      controller.signal,
+      'removeEventListener'
+    )
     const cleanupError = new Error('red cleanup')
     fixture.transport.admit.mockReturnValue(false)
-    const result = fixture.broadcaster.sendToWorker(
-      handle,
-      operation(),
-      controller.signal
-    ).then(value => value, error => error)
+    const result = fixture.broadcaster
+      .sendToWorker(handle, operation(), controller.signal)
+      .then(
+        value => value,
+        error => error
+      )
     const callsBeforeCleanup = [...fixture.calls]
 
     fixture.broadcaster.reject(handle, cleanupError)

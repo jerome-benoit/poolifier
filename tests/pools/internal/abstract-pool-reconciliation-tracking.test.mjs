@@ -29,14 +29,16 @@ describe('Abstract pool reconciliation tracking', () => {
     const events = []
     pool.emitter.on(PoolEvents.error, error => events.push(error))
     const drainSpy = vi.spyOn(pool, 'drainWorkerListenerErrors')
-    const errorSpy = vi.spyOn(pool.workerTerminalController, 'error')
+    const errorSpy = vi
+      .spyOn(pool.workerTerminalController, 'error')
       .mockImplementation(currentHandle => {
         pool.trackWorkerReconciliation(
           currentHandle.lease,
           reconciliation.promise
         )
       })
-    const exitSpy = vi.spyOn(pool.workerTerminalController, 'exit')
+    const exitSpy = vi
+      .spyOn(pool.workerTerminalController, 'exit')
       .mockImplementation(currentHandle => {
         pool.trackWorkerReconciliation(
           currentHandle.lease,
@@ -80,9 +82,11 @@ describe('Abstract pool reconciliation tracking', () => {
       pool.trackWorkerReconciliation(handle.lease, reconciliation)
       pool.trackWorkerReconciliation(handle.lease, reconciliation)
     }
-    await Promise.all(reconciliations.map(
-      reconciliation => reconciliation.catch(() => undefined)
-    ))
+    await Promise.all(
+      reconciliations.map(reconciliation =>
+        reconciliation.catch(() => undefined)
+      )
+    )
     await Promise.resolve()
 
     expect(events).toStrictEqual(failures)
@@ -120,23 +124,22 @@ describe('Abstract pool reconciliation tracking', () => {
       [activeB, activeBError],
       [queued, queuedError],
     ])
-    const snapshotSpy = vi.spyOn(pool.taskRegistry, 'snapshotByLease')
+    const snapshotSpy = vi
+      .spyOn(pool.taskRegistry, 'snapshotByLease')
       .mockReturnValue(snapshot)
-    const reserveSpy = vi.spyOn(pool.taskScheduler, 'reserveForReconciliation')
+    const reserveSpy = vi
+      .spyOn(pool.taskScheduler, 'reserveForReconciliation')
       .mockReturnValue([
         { lease: handle.lease, previousState: 'running', taskId: activeA },
         { lease: handle.lease, previousState: 'running', taskId: activeB },
       ])
-    const activeSnapshotSpy = vi.spyOn(
-      pool.taskRegistry,
-      'snapshotActiveReconciliationTaskIds'
-    ).mockReturnValue([activeA, activeB])
-    const buildSpy = vi.spyOn(
-      pool.workerReconciliationPolicy,
-      'buildTaskCrashError'
-    ).mockImplementation((_cause, _worker, taskId) => errors.get(taskId))
-    const settleSpy = vi.spyOn(pool, 'rejectTaskPromise')
-      .mockReturnValue(true)
+    const activeSnapshotSpy = vi
+      .spyOn(pool.taskRegistry, 'snapshotActiveReconciliationTaskIds')
+      .mockReturnValue([activeA, activeB])
+    const buildSpy = vi
+      .spyOn(pool.workerReconciliationPolicy, 'buildTaskCrashError')
+      .mockImplementation((_cause, _worker, taskId) => errors.get(taskId))
+    const settleSpy = vi.spyOn(pool, 'rejectTaskPromise').mockReturnValue(true)
 
     const representative = pool.rejectOwnedTasks(
       handle,
@@ -165,10 +168,12 @@ describe('Abstract pool reconciliation tracking', () => {
       queued,
     ])
     expect(settleSpy).toHaveBeenCalledTimes(3)
-    expect(settleSpy.mock.calls.every(([, , , lease]) => lease === handle.lease))
-      .toBe(true)
-    expect(buildSpy.mock.calls.map(([, , , attributed]) => attributed))
-      .toStrictEqual([false, false, false])
+    expect(
+      settleSpy.mock.calls.every(([, , , lease]) => lease === handle.lease)
+    ).toBe(true)
+    expect(
+      buildSpy.mock.calls.map(([, , , attributed]) => attributed)
+    ).toStrictEqual([false, false, false])
     expect(representative).toBe(activeAError)
     expect(activeAError).not.toBe(activeBError)
     expect(Object.hasOwn(activeAError, 'cause')).toBe(false)

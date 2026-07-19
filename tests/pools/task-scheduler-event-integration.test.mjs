@@ -86,7 +86,9 @@ describe('Task scheduler event integration', () => {
         })
       )
       if (!pool.info.ready) {
-        await new Promise(resolve => pool.emitter.once(PoolEvents.ready, resolve))
+        await new Promise(resolve =>
+          pool.emitter.once(PoolEvents.ready, resolve)
+        )
       }
       await pool.addTaskFunction('waitForRelease', data => {
         const view = new Int32Array(data)
@@ -119,7 +121,9 @@ describe('Task scheduler event integration', () => {
       const tasksQueued = new Promise(resolve => {
         resolveTasksQueued = resolve
       })
-      const enqueueTask = pool.workerNodes[0].enqueueTask.bind(pool.workerNodes[0])
+      const enqueueTask = pool.workerNodes[0].enqueueTask.bind(
+        pool.workerNodes[0]
+      )
       vi.spyOn(pool.workerNodes[0], 'enqueueTask').mockImplementation(task => {
         const queueSize = enqueueTask(task)
         if (++queuedTaskCountObserved === queuedTaskCount) resolveTasksQueued()

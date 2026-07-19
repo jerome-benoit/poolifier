@@ -128,7 +128,9 @@ export class TaskRegistry<Data = unknown, Response = unknown> {
 
   public register (input: RegisterTaskInput<Data, Response>): TaskUUID {
     const { task } = input
-    if (this.#records.has(task.taskId)) { throw new DuplicateTaskError(task.taskId) }
+    if (this.#records.has(task.taskId)) {
+      throw new DuplicateTaskError(task.taskId)
+    }
     const abortListener = (): void => {
       input.onAbort(task.taskId)
     }
@@ -222,7 +224,9 @@ export class TaskRegistry<Data = unknown, Response = unknown> {
     taskId: TaskUUID,
     settlement: TaskSettlement<Response>
   ): SettlementResult {
-    if (this.#records.get(taskId)?.state === 'reconciling') { return { settled: false } }
+    if (this.#records.get(taskId)?.state === 'reconciling') {
+      return { settled: false }
+    }
     return this.#settle(taskId, settlement)
   }
 
@@ -235,7 +239,9 @@ export class TaskRegistry<Data = unknown, Response = unknown> {
     if (
       record?.state !== 'reconciling' ||
       !sameWorkerLease(record.currentLease, lease)
-    ) { return { settled: false } }
+    ) {
+      return { settled: false }
+    }
     return this.#settle(taskId, settlement)
   }
 

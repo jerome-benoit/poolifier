@@ -129,7 +129,9 @@ export class TaskFunctionBroadcaster<
           response.taskFunctionProperties?.name !==
             message.taskFunctionProperties?.name ||
           response.taskFunctionOperationId !== message.taskFunctionOperationId
-        ) { return }
+        ) {
+          return
+        }
         settle(response.taskFunctionOperationStatus)
       }
       request = { listener, reject: settle }

@@ -1,4 +1,11 @@
-import { describe, expect, FixedThreadPool, it, numberOfWorkers, WorkerChoiceStrategies } from './abstract-pool-test-support.mjs'
+import {
+  describe,
+  expect,
+  FixedThreadPool,
+  it,
+  numberOfWorkers,
+  WorkerChoiceStrategies,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that pool worker choice strategy options can be set', async () => {

@@ -1,4 +1,22 @@
-import { CircularBuffer, defaultBucketSize, describe, DynamicClusterPool, DynamicThreadPool, expect, FixedClusterPool, FixedThreadPool, it, numberOfWorkers, PoolTypes, PriorityQueue, ready, version, WorkerChoiceStrategies, WorkerNode, WorkerTypes } from './abstract-pool-test-support.mjs'
+import {
+  CircularBuffer,
+  defaultBucketSize,
+  describe,
+  DynamicClusterPool,
+  DynamicThreadPool,
+  expect,
+  FixedClusterPool,
+  FixedThreadPool,
+  it,
+  numberOfWorkers,
+  PoolTypes,
+  PriorityQueue,
+  ready,
+  version,
+  WorkerChoiceStrategies,
+  WorkerNode,
+  WorkerTypes,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that pool info is set', async () => {

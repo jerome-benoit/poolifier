@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 
 import { WorkerTerminationError } from '../../../lib/index.mjs'
-import { currentLease, registerTask, selectedLease } from './task-registry-fixture.mjs'
+import {
+  currentLease,
+  registerTask,
+  selectedLease,
+} from './task-registry-fixture.mjs'
 
 describe('Task registry ownership', () => {
   it('binds waiting-ready ownership once and drains the exact lease', () => {
@@ -128,10 +132,7 @@ describe('Task registry ownership', () => {
       'running',
       currentLease
     )
-    fixture.registry.reserveForReconciliation(
-      [fixture.taskId],
-      currentLease
-    )
+    fixture.registry.reserveForReconciliation([fixture.taskId], currentLease)
     const staleLease = {
       generation: currentLease.generation - 1,
       id: currentLease.id,
@@ -198,10 +199,7 @@ describe('Task registry ownership', () => {
       'running',
       currentLease
     )
-    fixture.registry.reserveForReconciliation(
-      [fixture.taskId],
-      currentLease
-    )
+    fixture.registry.reserveForReconciliation([fixture.taskId], currentLease)
     const terminationError = new WorkerTerminationError(
       'Worker termination timed out',
       { taskId: fixture.taskId, workerId: currentLease.id }

@@ -603,7 +603,9 @@ describe('Abstract worker test suite', () => {
         sentinelTaskFunction,
         namedTaskFunction,
       ])
-      expect(taskFunctionLayers.size).toBe([...taskFunctionLayers.keys()].length)
+      expect(taskFunctionLayers.size).toBe(
+        [...taskFunctionLayers.keys()].length
+      )
       expect(taskFunctionLayers.listEffectiveProperties()).toStrictEqual([
         { name: DEFAULT_TASK_NAME },
         { name: 'named' },
@@ -623,7 +625,9 @@ describe('Abstract worker test suite', () => {
       ])
 
       taskFunctionLayers.addOverlay(DEFAULT_TASK_NAME, overlayTaskFunction)
-      expect(taskFunctionLayers.get(DEFAULT_TASK_NAME)).toBe(overlayTaskFunction)
+      expect(taskFunctionLayers.get(DEFAULT_TASK_NAME)).toBe(
+        overlayTaskFunction
+      )
       expect(taskFunctionLayers.removeOverlay(DEFAULT_TASK_NAME)).toBe(true)
       expect(taskFunctionLayers.get(DEFAULT_TASK_NAME)).toBe(
         replacementTaskFunction
@@ -636,7 +640,9 @@ describe('Abstract worker test suite', () => {
         DEFAULT_TASK_NAME,
         'named',
       ])
-      expect(taskFunctionLayers.size).toBe([...taskFunctionLayers.keys()].length)
+      expect(taskFunctionLayers.size).toBe(
+        [...taskFunctionLayers.keys()].length
+      )
       expect(taskFunctionLayers.listEffectiveProperties()).toStrictEqual([
         { name: DEFAULT_TASK_NAME },
         { name: 'named' },
@@ -857,7 +863,10 @@ describe('Abstract worker test suite', () => {
     })
 
     it('deletes the effective name from static and overlay task functions', () => {
-      const worker = new MutableTaskFunctionsWorker({ fn1: () => 1, fn2: () => 2 })
+      const worker = new MutableTaskFunctionsWorker({
+        fn1: () => 1,
+        fn2: () => 2,
+      })
       stub(worker, 'sendToMainWorker').returns()
       worker.setDefaultTaskFunction('fn2')
       worker.handleTaskFunctionOperationMessage({

@@ -53,17 +53,20 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
       workerId: handle.lease.id,
     })
 
-    await policy.complete({
-      reconciliationValue: staleTermination,
-      transition: {
-        cause: promotedCrash,
-        classification: 'faulted',
-        exit: { code: 9, signal: 'SIGKILL' },
-        handle,
-        ownedTaskIds: [],
-        previousState: 'ready',
+    await policy.complete(
+      {
+        reconciliationValue: staleTermination,
+        transition: {
+          cause: promotedCrash,
+          classification: 'faulted',
+          exit: { code: 9, signal: 'SIGKILL' },
+          handle,
+          ownedTaskIds: [],
+          previousState: 'ready',
+        },
       },
-    }, signal)
+      signal
+    )
 
     expect(hooks.publishError).toHaveBeenCalledExactlyOnceWith(
       promotedCrash,
@@ -75,16 +78,19 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
     const { handle, hooks, policy } = createFixture()
     const rawCause = new Error('raw exit')
 
-    await policy.complete({
-      reconciliationValue: undefined,
-      transition: {
-        cause: rawCause,
-        classification: 'faulted',
-        handle,
-        ownedTaskIds: [],
-        previousState: 'ready',
+    await policy.complete(
+      {
+        reconciliationValue: undefined,
+        transition: {
+          cause: rawCause,
+          classification: 'faulted',
+          handle,
+          ownedTaskIds: [],
+          previousState: 'ready',
+        },
       },
-    }, signal)
+      signal
+    )
 
     expect(hooks.publishError).toHaveBeenCalledOnce()
     const published = hooks.publishError.mock.calls[0][0]
@@ -96,16 +102,19 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
     const { handle, hooks, policy } = createFixture()
     const rawCause = new Error('raw exit')
 
-    await policy.complete({
-      reconciliationValue: undefined,
-      transition: {
-        cause: rawCause,
-        classification: 'faulted',
-        handle,
-        ownedTaskIds: ['00000000-0000-4000-8000-000000000001'],
-        previousState: 'ready',
+    await policy.complete(
+      {
+        reconciliationValue: undefined,
+        transition: {
+          cause: rawCause,
+          classification: 'faulted',
+          handle,
+          ownedTaskIds: ['00000000-0000-4000-8000-000000000001'],
+          previousState: 'ready',
+        },
       },
-    }, signal)
+      signal
+    )
 
     expect(hooks.publishError).toHaveBeenCalledOnce()
     const published = hooks.publishError.mock.calls[0][0]
@@ -121,22 +130,27 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
       workerId: handle.lease.id,
     })
 
-    await policy.complete({
-      reconciliationValue: reconciliationCrash,
-      transition: {
-        cause: rawCause,
-        classification: 'faulted',
-        handle,
-        ownedTaskIds: [],
-        previousState: 'ready',
+    await policy.complete(
+      {
+        reconciliationValue: reconciliationCrash,
+        transition: {
+          cause: rawCause,
+          classification: 'faulted',
+          handle,
+          ownedTaskIds: [],
+          previousState: 'ready',
+        },
       },
-    }, signal)
+      signal
+    )
 
     expect(hooks.publishError).toHaveBeenCalledOnce()
     const published = hooks.publishError.mock.calls[0][0]
     expect(published).toBeInstanceOf(WorkerCrashError)
     expect(published).not.toBe(reconciliationCrash)
-    expect(published.message).toBe('Worker node crashed: named transition raw crash')
+    expect(published.message).toBe(
+      'Worker node crashed: named transition raw crash'
+    )
     expect(published.cause).toBe(rawCause)
     expect(published.workerId).toBe(handle.lease.id)
     expect(published.taskId).toBeUndefined()
@@ -149,17 +163,20 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
       workerId: handle.lease.id,
     })
 
-    await policy.complete({
-      reconciliationValue: staleTermination,
-      transition: {
-        cause: 'abnormal exit',
-        classification: 'faulted',
-        exit: { code: 7, signal: 'SIGTERM' },
-        handle,
-        ownedTaskIds: [],
-        previousState: 'ready',
+    await policy.complete(
+      {
+        reconciliationValue: staleTermination,
+        transition: {
+          cause: 'abnormal exit',
+          classification: 'faulted',
+          exit: { code: 7, signal: 'SIGTERM' },
+          handle,
+          ownedTaskIds: [],
+          previousState: 'ready',
+        },
       },
-    }, signal)
+      signal
+    )
 
     expect(hooks.publishError).toHaveBeenCalledOnce()
     const published = hooks.publishError.mock.calls[0][0]
@@ -179,17 +196,20 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
       workerId: handle.lease.id,
     })
 
-    await policy.complete({
-      reconciliationValue: termination,
-      transition: {
-        cause: termination,
-        classification: 'exited',
-        exit: { code: 0, signal: null },
-        handle,
-        ownedTaskIds: [],
-        previousState: 'ready',
+    await policy.complete(
+      {
+        reconciliationValue: termination,
+        transition: {
+          cause: termination,
+          classification: 'exited',
+          exit: { code: 0, signal: null },
+          handle,
+          ownedTaskIds: [],
+          previousState: 'ready',
+        },
       },
-    }, signal)
+      signal
+    )
 
     expect(hooks.publishError).toHaveBeenCalledExactlyOnceWith(
       termination,

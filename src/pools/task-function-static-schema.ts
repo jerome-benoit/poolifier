@@ -10,7 +10,9 @@ export class TaskFunctionStaticSchema {
   #properties?: readonly TaskFunctionProperties[]
 
   public has (name: string): boolean {
-    return this.#properties?.some(properties => properties.name === name) === true
+    return (
+      this.#properties?.some(properties => properties.name === name) === true
+    )
   }
 
   public validate (
@@ -26,12 +28,14 @@ export class TaskFunctionStaticSchema {
       throw new TypeError('Worker static task function default is invalid')
     }
     if (this.#properties == null) {
-      this.#properties = Object.freeze(properties.map(property => ({
-        ...property,
-        ...(property.workerNodeKeys != null && {
-          workerNodeKeys: [...property.workerNodeKeys],
-        }),
-      })))
+      this.#properties = Object.freeze(
+        properties.map(property => ({
+          ...property,
+          ...(property.workerNodeKeys != null && {
+            workerNodeKeys: [...property.workerNodeKeys],
+          }),
+        }))
+      )
       return this.#properties
     }
     if (JSON.stringify(this.#properties) !== JSON.stringify(properties)) {

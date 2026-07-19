@@ -58,9 +58,7 @@ export const createStressObserver = (transport, PoolEvents) => {
         workers.set(this, { exited: false, id, worker: this })
         const snapshotMember = closeSnapshot.has(this)
         const admittedAfterClose =
-          closing &&
-          !snapshotMember &&
-          !workersAdmittedAfterClose.has(this)
+          closing && !snapshotMember && !workersAdmittedAfterClose.has(this)
         if (admittedAfterClose) {
           workersAdmittedAfterClose.add(this)
           ++replacementsAfterClose
@@ -93,14 +91,18 @@ export const createStressObserver = (transport, PoolEvents) => {
     process.stderr.write(`${error?.stack ?? error}\n`)
     process.exitCode = 1
   }
-  for (const event of observedProcessEvents) { process.on(event, onUnexpectedError) }
+  for (const event of observedProcessEvents) {
+    process.on(event, onUnexpectedError)
+  }
 
   return {
     beginClosing: pools => {
       closing = true
       workersAdmittedAfterClose = new Set()
       closeSnapshot = new Set(
-        pools.flatMap(pool => pool.workerNodes.map(workerNode => workerNode.worker))
+        pools.flatMap(pool =>
+          pool.workerNodes.map(workerNode => workerNode.worker)
+        )
       )
     },
     endClosing: () => {

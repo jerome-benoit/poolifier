@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 
-import { FixedClusterPool, FixedThreadPool, PoolEvents, WorkerCrashError } from '../../lib/index.mjs'
+import {
+  FixedClusterPool,
+  FixedThreadPool,
+  PoolEvents,
+  WorkerCrashError,
+} from '../../lib/index.mjs'
 import { createCrashRecoveryTestContext } from './crash-recovery-test-support.mjs'
 import { collectRejection } from './crash-recovery-utils.mjs'
 
