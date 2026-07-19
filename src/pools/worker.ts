@@ -1,3 +1,4 @@
+import type { ClusterSettings } from 'node:cluster'
 import type { EventEmitter } from 'node:events'
 import type { MessageChannel, WorkerOptions } from 'node:worker_threads'
 
@@ -29,10 +30,14 @@ export type EventHandler<Worker extends IWorker> =
   | OnlineHandler<Worker>
 
 /**
- * Callback invoked when the worker exits. Signature mirrors Node's
- * worker `'exit'` event: thread workers pass `(exitCode)` only
- * (`signal === undefined`); cluster workers pass `(exitCode, signal)`
- * with `signal` non-null for external kills (SIGKILL/SIGSEGV/OOM).
+ * Callback invoked synchronously when the worker exits.
+ *
+ * Thread workers provide the raw Node.js exit code and omit `signal`. Cluster
+ * workers preserve Node.js exit-event semantics: `exitCode` is `null` for a
+ * signal exit and `signal` contains the signal name when Node.js provides it.
+ * If the callback throws during lifecycle handling, Poolifier completes task
+ * settlement and worker or pool cleanup before rethrowing the original value
+ * asynchronously exactly once for that invocation.
  * @template Worker - Type of worker.
  */
 export type ExitHandler<Worker extends IWorker> = (
@@ -196,7 +201,6 @@ export interface IWorker extends EventEmitter {
  * Worker node interface.
  * @template Worker - Type of worker.
  * @template Data - Type of data sent to the worker. This can only be structured-cloneable data.
- * @internal
  */
 export interface IWorkerNode<Worker extends IWorker, Data = unknown>
   extends EventEmitter {
@@ -249,6 +253,15 @@ export interface IWorkerNode<Worker extends IWorker, Data = unknown>
    */
   readonly messageChannel?: MessageChannel
   /**
+   * Prepends a once worker event handler.
+   * @param event - The event.
+   * @param handler - The event handler.
+   */
+  readonly prependOnceWorkerEventHandler: (
+    event: string,
+    handler: EventHandler<Worker>
+  ) => void
+  /**
    * Registers once a worker event handler.
    * @param event - The event.
    * @param handler - The event handler.
@@ -292,10 +305,7 @@ export interface IWorkerNode<Worker extends IWorker, Data = unknown>
   readonly tasksQueueSize: () => number
   /**
    * Terminates the worker node. Idempotent: repeated calls share the
-   * in-flight termination and resolve identically. Best-effort: settles
-   * within a bounded grace period and removes worker listeners; on the
-   * Node 22 Windows wedge the underlying isolate may keep running past
-   * grace expiry.
+   * in-flight termination outcome and settle within the bounded grace period.
    */
   readonly terminate: () => Promise<void>
   /**
@@ -318,7 +328,6 @@ export interface StrategyData {
 
 /**
  * Worker information.
- * @internal
  */
 export interface WorkerInfo {
   /**
@@ -338,9 +347,9 @@ export interface WorkerInfo {
   continuousStealing: boolean
   /**
    * Crash handled flag.
-   * This flag is set to `true` on the first worker crash signal (`'error'` or `'exit'`) to prevent re-entry.
+   * This flag becomes `true` after the worker's first crash signal.
    */
-  crashHandled: boolean
+  readonly crashHandled: boolean
   /**
    * Dynamic flag.
    */
@@ -374,9 +383,9 @@ export interface WorkerInfo {
   taskFunctionsProperties?: TaskFunctionProperties[]
   /**
    * Terminating flag.
-   * This flag is set to `true` before voluntary worker termination so the subsequent `'exit'` event is not treated as a crash.
+   * This flag is `true` while voluntary worker termination is in progress.
    */
-  terminating: boolean
+  readonly terminating: boolean
   /**
    * Worker type.
    */
@@ -398,6 +407,7 @@ export interface WorkerNodeEventDetail {
  * @internal
  */
 export interface WorkerNodeOptions {
+  clusterSettings?: ClusterSettings
   env?: Record<string, unknown>
   tasksQueueAgingFactor: number | undefined
   tasksQueueBackPressureSize: number | undefined

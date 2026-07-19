@@ -2,20 +2,21 @@ import { EventEmitter } from 'node:events'
 import { MessageChannel } from 'node:worker_threads'
 
 import type { Task } from '../utility-types.js'
+import type { WorkerTransportDrain } from './worker-transport-drain.js'
 
-import { CircularBuffer } from '../circular-buffer.js'
 import { PriorityQueue } from '../queues/priority-queue.js'
-import { DEFAULT_TASK_NAME } from '../utils.js'
+import { TransportDrainBarrier } from './transport-drain-barrier.js'
 import {
   checkWorkerNodeArguments,
   createWorker,
   initWorkerInfo,
 } from './utils.js'
+import { terminateWorker } from './worker-termination.js'
+import { WorkerUsageStore } from './worker-usage-store.js'
 import {
   type EventHandler,
   type IWorker,
   type IWorkerNode,
-  MeasurementHistorySize,
   type StrategyData,
   type WorkerInfo,
   type WorkerNodeOptions,
@@ -25,20 +26,13 @@ import {
 } from './worker.js'
 
 /**
- * Grace cap for `worker.terminate()` which can hang on Node 22 Windows after
- * an uncaught worker exception (https://github.com/nodejs/node/pull/58070,
- * not backported to v22).
- */
-const WORKER_TERMINATION_GRACE_MS = 5000
-
-/**
  * Worker node.
  * @template Worker - Type of worker.
  * @template Data - Type of data sent to the worker. This can only be structured-cloneable data.
  */
 export class WorkerNode<Worker extends IWorker, Data = unknown>
   extends EventEmitter
-  implements IWorkerNode<Worker, Data> {
+  implements IWorkerNode<Worker, Data>, WorkerTransportDrain {
   /** @inheritdoc */
   public readonly info: WorkerInfo
   /** @inheritdoc */
@@ -50,12 +44,17 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
   /** @inheritdoc */
   public tasksQueueBackPressureSize: number
   /** @inheritdoc */
-  public usage: WorkerUsage
-  /** @inheritdoc */
   public readonly worker: Worker
+
+  /** @inheritdoc */
+  public get usage (): WorkerUsage {
+    return this.usageStore.usage
+  }
+
   private exited = false
-  private readonly taskFunctionsUsage: Map<string, WorkerUsage>
   private terminationPromise?: Promise<void>
+  private readonly transportDrainBarrier: TransportDrainBarrier
+  private readonly usageStore: WorkerUsageStore<Data>
 
   /**
    * Constructs a new worker node.
@@ -67,6 +66,7 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
     super()
     checkWorkerNodeArguments(type, filePath, opts)
     this.worker = createWorker<Worker>(type, filePath, {
+      clusterSettings: opts.clusterSettings,
       env: opts.env,
       workerOptions: opts.workerOptions,
     })
@@ -74,10 +74,13 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
       this.exited = true
     })
     this.info = initWorkerInfo(this.worker)
-    this.usage = this.initWorkerUsage()
     if (this.info.type === WorkerTypes.thread) {
       this.messageChannel = new MessageChannel()
     }
+    const messageChannel = this.messageChannel
+    this.transportDrainBarrier = messageChannel != null
+      ? new TransportDrainBarrier(messageChannel.port1, 'close')
+      : new TransportDrainBarrier(this.worker, 'disconnect')
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     this.tasksQueueBackPressureSize = opts.tasksQueueBackPressureSize!
     this.tasksQueue = new PriorityQueue<Task<Data>>(
@@ -86,7 +89,7 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
       opts.tasksQueueAgingFactor,
       opts.tasksQueueLoadExponent
     )
-    this.taskFunctionsUsage = new Map<string, WorkerUsage>()
+    this.usageStore = new WorkerUsageStore(this.info, this.tasksQueue)
   }
 
   /** @inheritdoc */
@@ -101,7 +104,7 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
 
   /** @inheritdoc */
   public deleteTaskFunctionWorkerUsage (name: string): boolean {
-    return this.taskFunctionsUsage.delete(name)
+    return this.usageStore.deleteTaskFunctionWorkerUsage(name)
   }
 
   /** @inheritdoc */
@@ -124,33 +127,21 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
     const tasksQueueSize = this.tasksQueue.enqueue(task, task.priority)
     if (this.hasBackPressure() && !this.info.backPressure) {
       this.info.backPressure = true
-      this.emit('backPressure', { workerId: this.info.id })
     }
     return tasksQueueSize
   }
 
   /** @inheritdoc */
   public getTaskFunctionWorkerUsage (name: string): undefined | WorkerUsage {
-    if (!Array.isArray(this.info.taskFunctionsProperties)) {
-      throw new Error(
-        `Cannot get task function worker usage for task function name '${name}' when task function properties list is not yet defined`
-      )
-    }
-    if (
-      Array.isArray(this.info.taskFunctionsProperties) &&
-      this.info.taskFunctionsProperties.length < 3
-    ) {
-      throw new Error(
-        `Cannot get task function worker usage for task function name '${name}' when task function properties list has less than 3 elements`
-      )
-    }
-    if (name === DEFAULT_TASK_NAME) {
-      name = this.info.taskFunctionsProperties[1].name
-    }
-    if (!this.taskFunctionsUsage.has(name)) {
-      this.taskFunctionsUsage.set(name, this.initTaskFunctionWorkerUsage(name))
-    }
-    return this.taskFunctionsUsage.get(name)
+    return this.usageStore.getTaskFunctionWorkerUsage(name)
+  }
+
+  /** @inheritdoc */
+  public prependOnceWorkerEventHandler (
+    event: string,
+    handler: EventHandler<Worker>
+  ): void {
+    this.worker.prependOnceListener(event, handler)
   }
 
   /** @inheritdoc */
@@ -188,69 +179,67 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
     return this.terminationPromise
   }
 
+  public async waitForTransportDrain (): Promise<void> {
+    await this.transportDrainBarrier.wait()
+  }
+
   private closeMessageChannel (): void {
-    if (this.messageChannel != null) {
-      this.messageChannel.port1.unref()
-      this.messageChannel.port2.unref()
-      this.messageChannel.port1.close()
-      this.messageChannel.port2.close()
-      delete this.messageChannel
+    const messageChannel = this.messageChannel
+    if (messageChannel == null) return
+    let cleanupFailure: undefined | { readonly error: unknown }
+    for (const cleanup of [
+      () => { messageChannel.port1.unref() },
+      () => { messageChannel.port2.unref() },
+      () => { messageChannel.port1.close() },
+      () => { messageChannel.port2.close() },
+    ]) {
+      try {
+        cleanup()
+      } catch (error) {
+        cleanupFailure ??= { error }
+      }
+    }
+    delete this.messageChannel
+    if (cleanupFailure != null) {
+      throw cleanupFailure.error
     }
   }
 
   private async doTerminate (): Promise<void> {
-    if (this.exited) {
-      this.closeMessageChannel()
-      this.worker.removeAllListeners()
-      this.emit('terminated')
-      this.removeAllListeners()
-      return
-    }
-    let exitFired = false
-    const waitWorkerExit = new Promise<void>(resolve => {
-      this.registerOnceWorkerEventHandler('exit', () => {
-        exitFired = true
-        resolve()
-      })
-    })
-    this.closeMessageChannel()
-    switch (this.info.type) {
-      case WorkerTypes.cluster:
-        this.registerOnceWorkerEventHandler('disconnect', () => {
-          this.worker.kill?.()
-        })
-        this.worker.disconnect?.()
-        break
-      case WorkerTypes.thread:
-        this.worker.unref?.()
-        this.worker.terminate?.().catch(() => undefined)
-        break
-    }
-    let timeoutHandle: NodeJS.Timeout | undefined
+    let terminationFailure: undefined | { readonly error: unknown }
     try {
-      await Promise.race([
-        waitWorkerExit,
-        new Promise<void>(resolve => {
-          timeoutHandle = setTimeout(resolve, WORKER_TERMINATION_GRACE_MS)
-          timeoutHandle.unref()
-        }),
-      ])
-    } finally {
-      if (timeoutHandle != null) clearTimeout(timeoutHandle)
+      this.closeMessageChannel()
+    } catch (error) {
+      terminationFailure = { error }
     }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- info.type narrowing is lost after switch break
-    if (!exitFired && this.info.type === WorkerTypes.cluster) {
-      // Cluster disconnect() is async; if grace expired before the once-'disconnect'
-      // hook fired kill(), force-kill now (catch ESRCH on already-dead PID).
-      try {
-        this.worker.kill?.()
-      } catch {
-        /* empty */
-      }
+    try {
+      await terminateWorker(this.worker, this.info.type, this.exited)
+    } catch (error) {
+      terminationFailure ??= { error }
     }
-    this.worker.removeAllListeners()
-    this.emit('terminated')
-    this.removeAllListeners()
+    try {
+      this.closeMessageChannel()
+    } catch (error) {
+      terminationFailure ??= { error }
+    }
+    try {
+      this.worker.removeAllListeners()
+    } catch (error) {
+      terminationFailure ??= { error }
+    }
+    try {
+      this.emit('terminated')
+    } catch (error) {
+      terminationFailure ??= { error }
+    }
+    try {
+      this.removeAllListeners()
+    } catch (error) {
+      terminationFailure ??= { error }
+    }
+    if (terminationFailure != null) {
+      throw terminationFailure.error
+    }
   }
 
   /**
@@ -259,86 +248,5 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
    */
   private hasBackPressure (): boolean {
     return this.tasksQueue.size >= this.tasksQueueBackPressureSize
-  }
-
-  private initTaskFunctionWorkerUsage (name: string): WorkerUsage {
-    const getTaskFunctionQueueSize = (): number => {
-      let taskFunctionQueueSize = 0
-      for (const task of this.tasksQueue) {
-        if (
-          (task.name === DEFAULT_TASK_NAME &&
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            name === this.info.taskFunctionsProperties![1].name) ||
-          (task.name !== DEFAULT_TASK_NAME && name === task.name)
-        ) {
-          ++taskFunctionQueueSize
-        }
-      }
-      return taskFunctionQueueSize
-    }
-    return {
-      elu: {
-        active: {
-          history: new CircularBuffer(MeasurementHistorySize),
-        },
-        idle: {
-          history: new CircularBuffer(MeasurementHistorySize),
-        },
-      },
-      runTime: {
-        history: new CircularBuffer(MeasurementHistorySize),
-      },
-      tasks: {
-        executed: 0,
-        executing: 0,
-        failed: 0,
-        get queued (): number {
-          return getTaskFunctionQueueSize()
-        },
-        sequentiallyStolen: 0,
-        stolen: 0,
-      },
-      waitTime: {
-        history: new CircularBuffer(MeasurementHistorySize),
-      },
-    }
-  }
-
-  private initWorkerUsage (): WorkerUsage {
-    const getTasksQueueSize = (): number => {
-      return this.tasksQueue.size
-    }
-    const getTasksQueueMaxSize = (): number => {
-      return this.tasksQueue.maxSize
-    }
-    return {
-      elu: {
-        active: {
-          history: new CircularBuffer(MeasurementHistorySize),
-        },
-        idle: {
-          history: new CircularBuffer(MeasurementHistorySize),
-        },
-      },
-      runTime: {
-        history: new CircularBuffer(MeasurementHistorySize),
-      },
-      tasks: {
-        executed: 0,
-        executing: 0,
-        failed: 0,
-        get maxQueued (): number {
-          return getTasksQueueMaxSize()
-        },
-        get queued (): number {
-          return getTasksQueueSize()
-        },
-        sequentiallyStolen: 0,
-        stolen: 0,
-      },
-      waitTime: {
-        history: new CircularBuffer(MeasurementHistorySize),
-      },
-    }
   }
 }
