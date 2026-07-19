@@ -1967,57 +1967,57 @@ export abstract class AbstractPool<
   }
 
   private isWorkerNodeBackPressured (workerNodeKey: number): boolean {
-    const workerNode = this.workerNodes[workerNodeKey]
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    const workerNode = this.readyWorkerNodeAt(workerNodeKey)
     if (workerNode == null) {
       return false
     }
-    return workerNode.info.ready && workerNode.info.backPressure
+    return workerNode.info.backPressure
   }
 
   private isWorkerNodeBusy (workerNodeKey: number): boolean {
-    const workerNode = this.workerNodes[workerNodeKey]
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    const workerNode = this.readyWorkerNodeAt(workerNodeKey)
     if (workerNode == null) {
       return false
     }
     if (this.opts.enableTasksQueue === true) {
       return (
-        workerNode.info.ready &&
         workerNode.usage.tasks.executing >=
-          (this.opts.tasksQueueOptions?.concurrency ?? 1)
+        (this.opts.tasksQueueOptions?.concurrency ?? 1)
       )
     }
-    return workerNode.info.ready && workerNode.usage.tasks.executing > 0
+    return workerNode.usage.tasks.executing > 0
   }
 
   private isWorkerNodeIdle (workerNodeKey: number): boolean {
-    const workerNode = this.workerNodes[workerNodeKey]
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    const workerNode = this.readyWorkerNodeAt(workerNodeKey)
     if (workerNode == null) {
       return false
     }
     if (this.opts.enableTasksQueue === true) {
       return (
-        workerNode.info.ready &&
         workerNode.usage.tasks.executing === 0 &&
         this.tasksQueueSize(workerNodeKey) === 0
       )
     }
-    return workerNode.info.ready && workerNode.usage.tasks.executing === 0
+    return workerNode.usage.tasks.executing === 0
   }
 
   private isWorkerNodeStealing (workerNodeKey: number): boolean {
-    const workerNode = this.workerNodes[workerNodeKey]
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    const workerNode = this.readyWorkerNodeAt(workerNodeKey)
     if (workerNode == null) {
       return false
     }
     return (
-      workerNode.info.ready &&
-      (workerNode.info.continuousStealing ||
-        workerNode.info.backPressureStealing)
+      workerNode.info.continuousStealing || workerNode.info.backPressureStealing
     )
+  }
+
+  private readyWorkerNodeAt (
+    workerNodeKey: number
+  ): IWorkerNode<Worker, Data> | undefined {
+    const workerNode = this.workerNodes[workerNodeKey]
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    return workerNode?.info.ready ? workerNode : undefined
   }
 
   private rejectOwnedTasks (
