@@ -4,7 +4,7 @@ import type {
   ReconciliationReservation,
   WorkerCompletionInput,
   WorkerLease,
-  WorkerReconcileInput,
+  WorkerReconciliationInput,
   WorkerReplacementInput,
 } from './lifecycle-types.js'
 import type { ScheduleResult } from './task-scheduler-types.js'
@@ -119,7 +119,7 @@ export class WorkerReconciliationPolicy<
   }
 
   public reconcile (
-    input: WorkerReconcileInput<WorkerNode>,
+    input: WorkerReconciliationInput<WorkerNode>,
     signal: AbortSignal
   ): WorkerTaskRecovery<WorkerNode> {
     signal.throwIfAborted()

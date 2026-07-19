@@ -1,21 +1,21 @@
 import type {
   DispatchPermit,
   LifecycleWorker,
-  ReconcileClassification,
-  ReconcileResult,
   TopologyChangeListener,
   WorkerExit,
   WorkerHandle,
   WorkerLifecycleCallbacks,
   WorkerLifecycleCommand,
   WorkerLifecycleSlot,
+  WorkerReconciliationClassification,
+  WorkerReconciliationResult,
   WorkerState,
   WorkerTerminalObservation,
 } from './lifecycle-types.js'
 
 import {
-  createWorkerReconcileInput,
-  missingReconcileResult,
+  createWorkerReconciliationInput,
+  missingReconciliationResult,
   synchronousPhaseSignal,
   workerHasActiveWork,
 } from './worker-lifecycle-state.js'
@@ -56,7 +56,7 @@ export class WorkerLifecycleCoordinator<
   public beginDrain (
     handle: WorkerHandle<Worker>,
     cause: unknown
-  ): Promise<ReconcileResult> {
+  ): Promise<WorkerReconciliationResult> {
     return this.#start({
       allowReplacement: true,
       cause,
@@ -67,16 +67,18 @@ export class WorkerLifecycleCoordinator<
 
   public classification (
     handle: WorkerHandle<Worker>
-  ): ReconcileClassification | undefined {
+  ): undefined | WorkerReconciliationClassification {
     return this.#topology.slot(handle)?.terminalClassification
   }
 
   public exit (
     handle: WorkerHandle<Worker>,
     exit: WorkerExit
-  ): Promise<ReconcileResult> {
+  ): Promise<WorkerReconciliationResult> {
     const slot = this.#topology.slot(handle)
-    if (slot == null) { return Promise.resolve(missingReconcileResult(handle.lease)) }
+    if (slot == null) {
+      return Promise.resolve(missingReconciliationResult(handle.lease))
+    }
     this.#terminalState.enrichExit(handle, exit)
     if (slot.reconciliation != null) return slot.reconciliation
     if (slot.terminalClassification != null) return this.reconcile(handle)
@@ -96,7 +98,7 @@ export class WorkerLifecycleCoordinator<
   public fault (
     handle: WorkerHandle<Worker>,
     cause: unknown
-  ): Promise<ReconcileResult> {
+  ): Promise<WorkerReconciliationResult> {
     return this.#start({
       allowReplacement: true,
       cause,
@@ -143,20 +145,25 @@ export class WorkerLifecycleCoordinator<
   public quarantine (
     handle: WorkerHandle<Worker>,
     cause: unknown,
-    classification: Exclude<ReconcileClassification, 'draining'> = 'faulted'
+    classification: Exclude<
+      WorkerReconciliationClassification,
+      'draining'
+    > = 'faulted'
   ): boolean {
     return this.#terminalState.quarantine(handle, cause, classification)
   }
 
-  public reconcile (handle: WorkerHandle<Worker>): Promise<ReconcileResult> {
+  public reconcile (
+    handle: WorkerHandle<Worker>
+  ): Promise<WorkerReconciliationResult> {
     const slot = this.#topology.slot(handle)
     if (slot == null || slot.state === 'removed') {
-      return Promise.resolve(missingReconcileResult(handle.lease))
+      return Promise.resolve(missingReconciliationResult(handle.lease))
     }
     if (slot.reconciliation != null) return slot.reconciliation
     const classification = slot.terminalClassification
     if (classification == null) {
-      return Promise.resolve(missingReconcileResult(handle.lease))
+      return Promise.resolve(missingReconciliationResult(handle.lease))
     }
     const previousState = slot.reconciliationPreviousState ?? slot.state
     delete slot.reconciliationPreviousState
@@ -177,19 +184,23 @@ export class WorkerLifecycleCoordinator<
   public reconcileTerminal (
     handle: WorkerHandle<Worker>,
     observation: WorkerTerminalObservation
-  ): Promise<ReconcileResult> {
+  ): Promise<WorkerReconciliationResult> {
     const slot = this.#topology.slot(handle)
     if (slot == null || slot.state === 'removed') {
-      return Promise.resolve(missingReconcileResult(handle.lease))
+      return Promise.resolve(missingReconciliationResult(handle.lease))
     }
     if (slot.terminalClassification === 'draining') {
-      if (observation.exit != null) { this.#terminalState.enrichExit(handle, observation.exit) }
+      if (observation.exit != null) {
+        this.#terminalState.enrichExit(handle, observation.exit)
+      }
       return this.reconcile(handle)
     }
     slot.cause = observation.cause
     slot.terminalClassification = observation.classification
     slot.state = observation.classification
-    if (observation.exit != null) { this.#terminalState.enrichExit(handle, observation.exit) }
+    if (observation.exit != null) {
+      this.#terminalState.enrichExit(handle, observation.exit)
+    }
     return this.reconcile(handle)
   }
 
@@ -220,7 +231,7 @@ export class WorkerLifecycleCoordinator<
   public setupFailed (
     handle: WorkerHandle<Worker>,
     cause: unknown
-  ): Promise<ReconcileResult> {
+  ): Promise<WorkerReconciliationResult> {
     return this.beginDrain(handle, cause)
   }
 
@@ -228,7 +239,7 @@ export class WorkerLifecycleCoordinator<
     return this.#topology.snapshotHandles()
   }
 
-  public snapshotPromises (): readonly Promise<ReconcileResult>[] {
+  public snapshotPromises (): readonly Promise<WorkerReconciliationResult>[] {
     return this.#topology.snapshotPromises()
   }
 
@@ -250,9 +261,9 @@ export class WorkerLifecycleCoordinator<
     slot: WorkerLifecycleSlot<Worker>,
     command: WorkerLifecycleCommand<Worker>,
     previousState: WorkerState
-  ): Promise<ReconcileResult> {
+  ): Promise<WorkerReconciliationResult> {
     const transition = () =>
-      createWorkerReconcileInput(
+      createWorkerReconciliationInput(
         slot,
         {
           classification: slot.terminalClassification ?? command.classification,
@@ -270,10 +281,12 @@ export class WorkerLifecycleCoordinator<
     })
   }
 
-  #start (command: WorkerLifecycleCommand<Worker>): Promise<ReconcileResult> {
+  #start (
+    command: WorkerLifecycleCommand<Worker>
+  ): Promise<WorkerReconciliationResult> {
     const slot = this.#topology.slot(command.handle)
     if (slot == null || slot.state === 'removed') {
-      return Promise.resolve(missingReconcileResult(command.handle.lease))
+      return Promise.resolve(missingReconciliationResult(command.handle.lease))
     }
     if (slot.reconciliation != null) return slot.reconciliation
     const previousState = slot.state

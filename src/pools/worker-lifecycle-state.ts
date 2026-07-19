@@ -1,18 +1,18 @@
 import type {
   LifecycleWorker,
-  ReconcileClassification,
-  ReconcileResult,
   WorkerHandle,
   WorkerLease,
   WorkerLifecycleSlot,
-  WorkerReconcileInput,
+  WorkerReconciliationClassification,
+  WorkerReconciliationInput,
+  WorkerReconciliationResult,
   WorkerState,
 } from './lifecycle-types.js'
 
 export const synchronousPhaseSignal = new AbortController().signal
 
 type WorkerReconcileTransition = Readonly<{
-  classification: ReconcileClassification
+  classification: WorkerReconciliationClassification
   previousState: WorkerState
 }>
 
@@ -23,11 +23,11 @@ export const compareWorkerHandles = <Worker>(
     left.lease.id - right.lease.id ||
   left.lease.generation - right.lease.generation
 
-export const createWorkerReconcileInput = <Worker extends LifecycleWorker>(
+export const createWorkerReconciliationInput = <Worker extends LifecycleWorker>(
   slot: WorkerLifecycleSlot<Worker>,
   transition: WorkerReconcileTransition,
-  ownedTaskIds: WorkerReconcileInput<Worker>['ownedTaskIds']
-): WorkerReconcileInput<Worker> => {
+  ownedTaskIds: WorkerReconciliationInput<Worker>['ownedTaskIds']
+): WorkerReconciliationInput<Worker> => {
   const exit = slot.exit == null ? undefined : Object.freeze({ ...slot.exit })
   return Object.freeze({
     cause: slot.cause,
@@ -39,9 +39,9 @@ export const createWorkerReconcileInput = <Worker extends LifecycleWorker>(
   })
 }
 
-export const missingReconcileResult = (
+export const missingReconciliationResult = (
   lease: WorkerLease
-): ReconcileResult => ({ cause: undefined, committed: false, lease })
+): WorkerReconciliationResult => ({ cause: undefined, committed: false, lease })
 
 export const workerHasActiveWork = (
   worker: LifecycleWorker & {

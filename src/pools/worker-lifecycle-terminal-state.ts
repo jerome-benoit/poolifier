@@ -1,9 +1,9 @@
 import type {
   LifecycleWorker,
-  ReconcileClassification,
   WorkerExit,
   WorkerHandle,
   WorkerLifecycleCallbacks,
+  WorkerReconciliationClassification,
 } from './lifecycle-types.js'
 
 import { synchronousPhaseSignal } from './worker-lifecycle-state.js'
@@ -49,7 +49,10 @@ export class WorkerLifecycleTerminalState<
   public quarantine (
     handle: WorkerHandle<Worker>,
     cause: unknown,
-    classification: Exclude<ReconcileClassification, 'draining'> = 'faulted'
+    classification: Exclude<
+      WorkerReconciliationClassification,
+      'draining'
+    > = 'faulted'
   ): boolean {
     const slot = this.topology.slot(handle)
     if (

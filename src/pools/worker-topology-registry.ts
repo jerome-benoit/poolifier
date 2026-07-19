@@ -1,15 +1,19 @@
 import type {
   LifecycleWorker,
-  ReconcileResult,
   TopologyChangeListener,
   WorkerHandle,
   WorkerLifecycleSlot,
+  WorkerReconciliationResult,
 } from './lifecycle-types.js'
 
 import { compareWorkerHandles } from './worker-lifecycle-state.js'
 
-export class WorkerTopologyRegistry<Worker extends LifecycleWorker = LifecycleWorker> {
-  public get epoch (): number { return this.#epoch }
+export class WorkerTopologyRegistry<
+  Worker extends LifecycleWorker = LifecycleWorker
+> {
+  public get epoch (): number {
+    return this.#epoch
+  }
 
   readonly #currentById = new Map<number, WorkerLifecycleSlot<Worker>>()
   #epoch = 0
@@ -36,9 +40,11 @@ export class WorkerTopologyRegistry<Worker extends LifecycleWorker = LifecycleWo
 
   public isCurrent (handle: WorkerHandle<Worker>): boolean {
     const slot = this.slot(handle)
-    return slot != null &&
+    return (
+      slot != null &&
       slot.state !== 'removed' &&
       this.#currentById.get(handle.lease.id) === slot
+    )
   }
 
   public register (worker: Worker): WorkerHandle<Worker> {
@@ -76,7 +82,7 @@ export class WorkerTopologyRegistry<Worker extends LifecycleWorker = LifecycleWo
     return [...this.#currentById.values()].map(slot => slot.handle)
   }
 
-  public snapshotPromises (): readonly Promise<ReconcileResult>[] {
+  public snapshotPromises (): readonly Promise<WorkerReconciliationResult>[] {
     return [...this.#currentById.values()].flatMap(slot =>
       slot.reconciliation == null ? [] : [slot.reconciliation]
     )

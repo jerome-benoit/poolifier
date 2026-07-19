@@ -17,12 +17,12 @@ import type {
   TaskFunctionObject,
 } from '../worker/task-functions.js'
 import type {
-  ReconcileResult,
   SettlementResult,
   TaskSettlement,
   WorkerHandle,
   WorkerLease,
-  WorkerReconcileInput,
+  WorkerReconciliationInput,
+  WorkerReconciliationResult,
 } from './lifecycle-types.js'
 
 import { defaultBucketSize } from '../queues/queue-types.js'
@@ -34,16 +34,10 @@ import {
   sleep,
 } from '../utils.js'
 import { KillBehaviors } from '../worker/worker-options.js'
-import {
-  type WorkerCrashError,
-  WorkerTerminationError,
-} from './errors.js'
+import { type WorkerCrashError, WorkerTerminationError } from './errors.js'
 import { PoolEventPublisher } from './pool-event-publisher.js'
 import { projectPoolInfo } from './pool-info-projector.js'
-import {
-  collectLifecycleFailures,
-  PoolLifecycle,
-} from './pool-lifecycle.js'
+import { collectLifecycleFailures, PoolLifecycle } from './pool-lifecycle.js'
 import {
   buildPoolOptions,
   checkValidWorkerChoiceStrategyOptions,
@@ -216,8 +210,9 @@ export abstract class AbstractPool<
   protected abstract get worker (): WorkerType
   private readonly eventPublisher: PoolEventPublisher
   private readonly poolLifecycle = new PoolLifecycle()
-  private readonly publishedWorkerReconciliations =
-    new WeakSet<Promise<ReconcileResult>>()
+  private readonly publishedWorkerReconciliations = new WeakSet<
+    Promise<WorkerReconciliationResult>
+  >()
 
   private readonly scheduleResultAdapter: ScheduleResultAdapter<
     IWorkerNode<Worker, Data>,
@@ -286,8 +281,7 @@ export abstract class AbstractPool<
     {
       isAbnormalExit: (exitCode, signal, workerId) =>
         this.isAbnormalExit(exitCode, signal, workerId),
-      rejectOwnedTasks: (handle, error) =>
-        this.rejectOwnedTasks(handle, error),
+      rejectOwnedTasks: (handle, error) => this.rejectOwnedTasks(handle, error),
       rejectTaskFunctionRequests: (handle, error) => {
         this.taskFunctionBroadcaster.reject(handle, error)
       },
@@ -425,7 +419,9 @@ export abstract class AbstractPool<
       snapshot: () => this.workerLifecycleCoordinator.snapshotHandles(),
     })
     this.taskFunctionCommitProjector = new TaskFunctionCommitProjector({
-      defer: error => { this.eventPublisher.defer(error) },
+      defer: error => {
+        this.eventPublisher.defer(error)
+      },
       projectRemovedUsage: (name, workerNodeKey) => {
         this.workerNodes[workerNodeKey]?.deleteTaskFunctionWorkerUsage(name)
       },
@@ -467,17 +463,21 @@ export abstract class AbstractPool<
         )
       },
       send: async (handle, request, signal) =>
-        await this.taskFunctionBroadcaster.sendToWorker(handle, {
-          ...(request.taskFunction != null && {
-            taskFunction: request.taskFunction.taskFunction.toString(),
-          }),
-          taskFunctionOperation: request.operation,
-          taskFunctionOperationId: request.operationId,
-          taskFunctionProperties: buildTaskFunctionProperties(
-            request.name,
-            request.taskFunction
-          ),
-        }, signal),
+        await this.taskFunctionBroadcaster.sendToWorker(
+          handle,
+          {
+            ...(request.taskFunction != null && {
+              taskFunction: request.taskFunction.taskFunction.toString(),
+            }),
+            taskFunctionOperation: request.operation,
+            taskFunctionOperationId: request.operationId,
+            taskFunctionProperties: buildTaskFunctionProperties(
+              request.name,
+              request.taskFunction
+            ),
+          },
+          signal
+        ),
       snapshotReadyHandles: () =>
         this.workerLifecycleCoordinator.snapshotReadyHandles(),
       subscribeTopologyChanges: listener =>
@@ -519,11 +519,7 @@ export abstract class AbstractPool<
       shouldUpdateTaskFunctionUsage: workerNodeKey =>
         this.shallUpdateTaskFunctionWorkerUsage(workerNodeKey),
       updateElu: (usage, message) => {
-        updateEluWorkerUsage(
-          this.workerChoiceStrategiesContext,
-          usage,
-          message
-        )
+        updateEluWorkerUsage(this.workerChoiceStrategiesContext, usage, message)
       },
       updateRunTime: (usage, message) => {
         updateRunTimeWorkerUsage(
@@ -594,8 +590,9 @@ export abstract class AbstractPool<
           taskIds,
           this.workerLifecycleCoordinator
             .snapshotHandles()
-            .filter(handle =>
-              this.workerLifecycleCoordinator.acquireDispatch(handle) != null
+            .filter(
+              handle =>
+                this.workerLifecycleCoordinator.acquireDispatch(handle) != null
             ),
           error
         ),
@@ -615,7 +612,9 @@ export abstract class AbstractPool<
           )
         }
       },
-      taskDequeued: owner => { this.taskEventState.checkTaskDequeued(owner) },
+      taskDequeued: owner => {
+        this.taskEventState.checkTaskDequeued(owner)
+      },
       tasksFinishedTimeout,
       waitForDrain: async (worker, signal) => {
         await waitWorkerNodeEvents(
@@ -645,7 +644,9 @@ export abstract class AbstractPool<
         applyResult: result => {
           this.scheduleResultAdapter.apply(result)
         },
-        cancel: timer => { timer.cancel() },
+        cancel: timer => {
+          timer.cancel()
+        },
         canSteal: () => !this.cannotStealTask(),
         defer: callback => {
           queueMicrotask(callback)
@@ -687,8 +688,14 @@ export abstract class AbstractPool<
               if (!controller.signal.aborted) this.publishPoolError(error)
             }
           }
-          run().catch((error: unknown) => { this.publishPoolError(error) })
-          return { cancel: () => { controller.abort() } }
+          run().catch((error: unknown) => {
+            this.publishPoolError(error)
+          })
+          return {
+            cancel: () => {
+              controller.abort()
+            },
+          }
         },
         sequentiallyStolen: handle =>
           handle.worker.usage.tasks.sequentiallyStolen,
@@ -1471,7 +1478,8 @@ export abstract class AbstractPool<
         const handles = this.workerLifecycleCoordinator.snapshotHandles()
         const drains = handles.map(handle => {
           const error = new WorkerTerminationError(
-            'Worker node terminated by pool', { workerId: handle.lease.id }
+            'Worker node terminated by pool',
+            { workerId: handle.lease.id }
           )
           this.taskFunctionBroadcaster.reject(handle, error)
           return this.workerLifecycleCoordinator.beginDrain(handle, error)
@@ -1799,7 +1807,7 @@ export abstract class AbstractPool<
         handle,
         previousStolenTask == null
           ? undefined
-          : previousStolenTask.name ?? DEFAULT_TASK_NAME
+          : (previousStolenTask.name ?? DEFAULT_TASK_NAME)
       )
     }
   }
@@ -1875,9 +1883,7 @@ export abstract class AbstractPool<
     }
   }
 
-  private hasActiveExecutionForWorkerId (
-    workerId: number | undefined
-  ): boolean {
+  private hasActiveExecutionForWorkerId (workerId: number | undefined): boolean {
     const handle = this.workerLifecycleCoordinator
       .snapshotHandles()
       .find(current => current.lease.id === workerId)
@@ -1920,53 +1926,51 @@ export abstract class AbstractPool<
     transferList?: readonly Transferable[]
   ): Promise<Response> {
     return await this.taskFunctionTransactionManager.withStableCatalogAdmission(
-      () => new Promise<Response>((resolve, reject) => {
-        if (!this.started) throw new WorkerTerminationError('Worker node terminated by pool')
-        const taskId = randomUUID()
-        const task: Task<Data> & { readonly taskId: TaskUUID } = {
-          abortable: abortSignal != null,
-          data: data ?? ({} as Data),
-          name: name ?? DEFAULT_TASK_NAME,
-          priority: this.getWorkerNodeTaskFunctionPriority(
-            0,
-            name
-          ),
-          strategy: this.getWorkerNodeTaskFunctionWorkerChoiceStrategy(
-            0,
-            name
-          ),
-          taskId,
-          timestamp: performance.now(),
-          transferList,
-        }
-        this.taskScheduler.register({
-          abortSignal,
-          onAbort: currentTaskId => {
-            this.abortTask({ taskId: currentTaskId })
-          },
-          reject,
-          resolve,
-          task,
-          ...(this.emitter != null && {
-            asyncResource: new AsyncResource('poolifier:task', {
-              requireManualDestroy: true,
-              triggerAsyncId: this.emitter.asyncId,
-            }),
-          }),
-        })
-        if (this.taskRegistry.get(taskId) == null) return
-        const permit = this.workerAdmission.acquire(name)
-        if (permit == null) {
-          this.rejectTaskPromise(
+      () =>
+        new Promise<Response>((resolve, reject) => {
+          if (!this.started) { throw new WorkerTerminationError('Worker node terminated by pool') }
+          const taskId = randomUUID()
+          const task: Task<Data> & { readonly taskId: TaskUUID } = {
+            abortable: abortSignal != null,
+            data: data ?? ({} as Data),
+            name: name ?? DEFAULT_TASK_NAME,
+            priority: this.getWorkerNodeTaskFunctionPriority(0, name),
+            strategy: this.getWorkerNodeTaskFunctionWorkerChoiceStrategy(
+              0,
+              name
+            ),
             taskId,
-            undefined,
-            new Error('No eligible worker is available')
-          )
-          return
-        }
-        this.taskRouting.route(taskId, permit)
-        this.taskEventState.checkExecutionStarted()
-      }),
+            timestamp: performance.now(),
+            transferList,
+          }
+          this.taskScheduler.register({
+            abortSignal,
+            onAbort: currentTaskId => {
+              this.abortTask({ taskId: currentTaskId })
+            },
+            reject,
+            resolve,
+            task,
+            ...(this.emitter != null && {
+              asyncResource: new AsyncResource('poolifier:task', {
+                requireManualDestroy: true,
+                triggerAsyncId: this.emitter.asyncId,
+              }),
+            }),
+          })
+          if (this.taskRegistry.get(taskId) == null) return
+          const permit = this.workerAdmission.acquire(name)
+          if (permit == null) {
+            this.rejectTaskPromise(
+              taskId,
+              undefined,
+              new Error('No eligible worker is available')
+            )
+            return
+          }
+          this.taskRouting.route(taskId, permit)
+          this.taskEventState.checkExecutionStarted()
+        }),
       abortSignal
     )
   }
@@ -2029,14 +2033,18 @@ export abstract class AbstractPool<
     handle: WorkerHandle<IWorkerNode<Worker, Data>>,
     baseError: WorkerCrashError
   ): WorkerCrashError {
-    const taskIds = [...new Set(this.taskRegistry.snapshotByLease(handle.lease))]
+    const taskIds = [
+      ...new Set(this.taskRegistry.snapshotByLease(handle.lease)),
+    ]
     this.taskScheduler.reserveForReconciliation(taskIds, handle.lease)
     const activeTaskIds = new Set(
-      this.taskRegistry.snapshotActiveReconciliationTaskIds(taskIds, handle.lease)
+      this.taskRegistry.snapshotActiveReconciliationTaskIds(
+        taskIds,
+        handle.lease
+      )
     )
-    const attributedTaskId = activeTaskIds.size === 1
-      ? activeTaskIds.values().next().value
-      : undefined
+    const attributedTaskId =
+      activeTaskIds.size === 1 ? activeTaskIds.values().next().value : undefined
     const orderedTaskIds = [
       ...taskIds.filter(taskId => activeTaskIds.has(taskId)),
       ...taskIds.filter(taskId => !activeTaskIds.has(taskId)),
@@ -2052,12 +2060,7 @@ export abstract class AbstractPool<
       )
       try {
         if (
-          this.rejectTaskPromise(
-            taskId,
-            handle.worker,
-            taskError,
-            handle.lease
-          )
+          this.rejectTaskPromise(taskId, handle.worker, taskError, handle.lease)
         ) {
           firstSettledError ??= taskError
           if (activeTaskIds.has(taskId)) {
@@ -2227,20 +2230,19 @@ export abstract class AbstractPool<
   }
 
   private async terminateWorkerNode (
-    input: WorkerReconcileInput<IWorkerNode<Worker, Data>>,
+    input: WorkerReconciliationInput<IWorkerNode<Worker, Data>>,
     signal: AbortSignal
   ): Promise<void> {
     signal.throwIfAborted()
-    await this.workerTerminalController.terminate(
-      input.handle,
-      async () => { await input.handle.worker.terminate() }
-    )
+    await this.workerTerminalController.terminate(input.handle, async () => {
+      await input.handle.worker.terminate()
+    })
     signal.throwIfAborted()
   }
 
   private trackWorkerReconciliation (
     lease: WorkerLease,
-    reconciliation: Promise<ReconcileResult>
+    reconciliation: Promise<WorkerReconciliationResult>
   ): void {
     this.poolLifecycle.track(reconciliation)
     if (this.publishedWorkerReconciliations.has(reconciliation)) return

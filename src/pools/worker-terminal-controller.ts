@@ -1,8 +1,8 @@
 import type {
   LifecycleWorker,
-  ReconcileResult,
   WorkerHandle,
   WorkerLease,
+  WorkerReconciliationResult,
 } from './lifecycle-types.js'
 
 import { type WorkerCrashError, WorkerTerminationError } from './errors.js'
@@ -35,7 +35,7 @@ interface WorkerTerminalCallbacks<Worker extends TerminalWorker> {
   ) => void
   readonly track: (
     lease: WorkerLease,
-    reconciliation: Promise<ReconcileResult>
+    reconciliation: Promise<WorkerReconciliationResult>
   ) => void
 }
 

@@ -1,7 +1,7 @@
 import type { TaskUUID } from '../utility-types.js'
 import type {
   LifecycleWorker,
-  WorkerReconcileInput,
+  WorkerReconciliationInput,
 } from './lifecycle-types.js'
 
 import { WorkerCrashError, WorkerTerminationError } from './errors.js'
@@ -44,7 +44,7 @@ export const buildWorkerTaskCrashError = (
     })
 
 export const buildWorkerReconciliationError = <Worker extends LifecycleWorker>(
-  transition: WorkerReconcileInput<Worker>,
+  transition: WorkerReconciliationInput<Worker>,
   taskId: TaskUUID,
   isCrashAttributed: boolean
 ): WorkerCrashError | WorkerTerminationError => {

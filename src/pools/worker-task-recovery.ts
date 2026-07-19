@@ -2,7 +2,7 @@ import type { TaskUUID } from '../utility-types.js'
 import type {
   LifecycleWorker,
   ReconciliationReservation,
-  WorkerReconcileInput,
+  WorkerReconciliationInput,
   WorkerReconciliationPreparation,
 } from './lifecycle-types.js'
 import type { ScheduleResult } from './task-scheduler-types.js'
@@ -26,9 +26,10 @@ export interface WorkerTaskRecoveryHooks<Worker> {
 }
 
 const isRecoverable = (
-  classification: WorkerReconcileInput<LifecycleWorker>['classification'],
+  classification: WorkerReconciliationInput<LifecycleWorker>['classification'],
   state: ReconciliationReservation['previousState']
-): boolean => classification === 'exited' ||
+): boolean =>
+  classification === 'exited' ||
   state === 'registered' ||
   state === 'waitingReady' ||
   state === 'queued' ||
@@ -40,7 +41,7 @@ implements WorkerReconciliationPreparation {
   readonly #pending = new Map<TaskUUID, ReconciliationReservation>()
 
   public constructor (
-    private readonly transition: WorkerReconcileInput<LifecycleWorker>,
+    private readonly transition: WorkerReconciliationInput<LifecycleWorker>,
     reservations: readonly ReconciliationReservation[],
     private readonly hooks: WorkerTaskRecoveryHooks<Worker>,
     prepareTimeoutMs?: number
@@ -56,19 +57,27 @@ implements WorkerReconciliationPreparation {
     for (const reservation of [...this.#pending.values()]) {
       try {
         signal.throwIfAborted()
-        this.hooks.reject(reservation, this.hooks.error(reservation.taskId, reservation.previousState))
+        this.hooks.reject(
+          reservation,
+          this.hooks.error(reservation.taskId, reservation.previousState)
+        )
         this.#pending.delete(reservation.taskId)
-      } catch (error) { // no-excuse-ok: catch -- every reservation must be attempted
+      } catch (error) {
+        // no-excuse-ok: catch -- every reservation must be attempted
         failures.push(error)
       }
     }
     try {
       this.hooks.finalize()
-    } catch (error) { // no-excuse-ok: catch -- settlement failures must remain observable
+    } catch (error) {
+      // no-excuse-ok: catch -- settlement failures must remain observable
       failures.push(error)
     }
     if (failures.length > 0) {
-      throw new AggregateError(failures, 'Residual worker tasks could not be settled')
+      throw new AggregateError(
+        failures,
+        'Residual worker tasks could not be settled'
+      )
     }
   }
 
@@ -78,11 +87,13 @@ implements WorkerReconciliationPreparation {
     signal.throwIfAborted()
     let firstError: unknown
     for (const reservation of [...this.#pending.values()]) {
-      if (isRecoverable(
-        this.transition.classification,
+      if (
+        isRecoverable(this.transition.classification, reservation.previousState)
+      ) { continue }
+      const error = this.hooks.error(
+        reservation.taskId,
         reservation.previousState
-      )) continue
-      const error = this.hooks.error(reservation.taskId, reservation.previousState)
+      )
       if (this.hooks.reject(reservation, error)) firstError ??= error
       this.#pending.delete(reservation.taskId)
     }

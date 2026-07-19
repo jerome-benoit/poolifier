@@ -19,11 +19,14 @@ export interface LifecycleWorker {
   readonly info: Readonly<{ dynamic: boolean; id?: number }>
 }
 
-export type ReconcileClassification = 'draining' | 'exited' | 'faulted'
+export type WorkerReconciliationClassification =
+  | 'draining'
+  | 'exited'
+  | 'faulted'
 
-export type ReconcileResult = Readonly<{
+export type WorkerReconciliationResult = Readonly<{
   cause: unknown
-  classification?: ReconcileClassification
+  classification?: WorkerReconciliationClassification
   committed: boolean
   exit?: WorkerExit
   lease: WorkerLease
@@ -31,7 +34,7 @@ export type ReconcileResult = Readonly<{
 
 export type WorkerCompletionInput<Worker extends LifecycleWorker> = Readonly<{
   reconciliationValue: unknown
-  transition: WorkerReconcileInput<Worker>
+  transition: WorkerReconciliationInput<Worker>
 }>
 
 export type ReconciliationReservation = Readonly<{
@@ -54,7 +57,7 @@ export type WorkerExit = Readonly<{
 
 export type WorkerTerminalObservation = Readonly<{
   cause: unknown
-  classification: Exclude<ReconcileClassification, 'draining'>
+  classification: Exclude<WorkerReconciliationClassification, 'draining'>
   exit?: WorkerExit
 }>
 
@@ -67,13 +70,19 @@ export interface WorkerLifecycleCallbacks<Worker extends LifecycleWorker> {
     handle: WorkerHandle<Worker>,
     signal: AbortSignal
   ) => Promise<void>
-  readonly exclude: (handle: WorkerHandle<Worker>, signal: AbortSignal) => unknown
-  readonly isPoolRunning: (signal: AbortSignal) => boolean
-  readonly reconcile: (
-    input: WorkerReconcileInput<Worker>,
+  readonly exclude: (
+    handle: WorkerHandle<Worker>,
     signal: AbortSignal
   ) => unknown
-  readonly remove: (handle: WorkerHandle<Worker>, signal: AbortSignal) => unknown
+  readonly isPoolRunning: (signal: AbortSignal) => boolean
+  readonly reconcile: (
+    input: WorkerReconciliationInput<Worker>,
+    signal: AbortSignal
+  ) => unknown
+  readonly remove: (
+    handle: WorkerHandle<Worker>,
+    signal: AbortSignal
+  ) => unknown
   readonly replace: (
     input: WorkerReplacementInput<Worker>,
     signal: AbortSignal
@@ -84,31 +93,33 @@ export interface WorkerLifecycleCallbacks<Worker extends LifecycleWorker> {
   ) => boolean
   readonly snapshotOwnedWork: (lease: WorkerLease) => readonly TaskUUID[]
   readonly terminate: (
-    input: WorkerReconcileInput<Worker>,
+    input: WorkerReconciliationInput<Worker>,
     signal: AbortSignal
   ) => Promise<void>
 }
 
 export type TopologyChangeListener = (epoch: number) => void
 
-export type WorkerReconcilerInput<Worker extends LifecycleWorker> = Readonly<{
-  baseTransition: WorkerReconcileInput<Worker>
-  command: WorkerLifecycleCommand<Worker>
-  finalize: (signal: AbortSignal) => unknown
-  transition: () => WorkerReconcileInput<Worker>
-}>
+export type WorkerReconciliationContext<Worker extends LifecycleWorker> =
+  Readonly<{
+    baseTransition: WorkerReconciliationInput<Worker>
+    command: WorkerLifecycleCommand<Worker>
+    finalize: (signal: AbortSignal) => unknown
+    transition: () => WorkerReconciliationInput<Worker>
+  }>
 
-export type WorkerReconcileInput<Worker extends LifecycleWorker> = Readonly<{
-  cause: unknown
-  classification: ReconcileClassification
-  exit?: WorkerExit
-  handle: WorkerHandle<Worker>
-  ownedTaskIds: readonly TaskUUID[]
-  previousState: WorkerState
-}>
+export type WorkerReconciliationInput<Worker extends LifecycleWorker> =
+  Readonly<{
+    cause: unknown
+    classification: WorkerReconciliationClassification
+    exit?: WorkerExit
+    handle: WorkerHandle<Worker>
+    ownedTaskIds: readonly TaskUUID[]
+    previousState: WorkerState
+  }>
 
 export type WorkerReplacementInput<Worker extends LifecycleWorker> = Readonly<{
-  classification: ReconcileClassification
+  classification: WorkerReconciliationClassification
   handle: WorkerHandle<Worker>
 }>
 
@@ -124,7 +135,7 @@ export type WorkerState =
 export interface WorkerLifecycleCommand<Worker> {
   readonly allowReplacement: boolean
   readonly cause: unknown
-  readonly classification: ReconcileClassification
+  readonly classification: WorkerReconciliationClassification
   readonly excluded?: boolean
   readonly exclusionError?: unknown
   readonly handle: WorkerHandle<Worker>
@@ -135,10 +146,10 @@ export interface WorkerLifecycleSlot<Worker> {
   exclusionError?: unknown
   exit?: { code: null | number; signal?: NodeJS.Signals | null }
   readonly handle: WorkerHandle<Worker>
-  reconciliation?: Promise<ReconcileResult>
+  reconciliation?: Promise<WorkerReconciliationResult>
   reconciliationPreviousState?: WorkerState
   state: WorkerState
-  terminalClassification?: ReconcileClassification
+  terminalClassification?: WorkerReconciliationClassification
 }
 
 export type TaskState =

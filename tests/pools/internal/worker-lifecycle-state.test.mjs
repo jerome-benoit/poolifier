@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createWorkerReconcileInput } from '../../../lib/pools/worker-lifecycle-state.mjs'
+import { createWorkerReconciliationInput } from '../../../lib/pools/worker-lifecycle-state.mjs'
 
 describe('Worker lifecycle state', () => {
   it('builds an immutable reconciliation snapshot from lifecycle state', () => {
@@ -16,7 +16,7 @@ describe('Worker lifecycle state', () => {
       state: 'faulted',
     }
 
-    const input = createWorkerReconcileInput(
+    const input = createWorkerReconciliationInput(
       slot,
       { classification: 'faulted', previousState: 'ready' },
       ['first-task']
@@ -41,7 +41,7 @@ describe('Worker lifecycle state', () => {
       worker: { info: { dynamic: false, id: 1 } },
     }
 
-    const input = createWorkerReconcileInput(
+    const input = createWorkerReconciliationInput(
       { cause: undefined, handle, state: 'draining' },
       { classification: 'draining', previousState: 'ready' },
       []

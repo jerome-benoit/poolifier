@@ -1,6 +1,6 @@
 import type {
-  ReconcileResult,
   WorkerExit,
+  WorkerReconciliationResult,
   WorkerTerminalObservation,
 } from './lifecycle-types.js'
 
@@ -8,7 +8,7 @@ interface TerminalSignalCallbacks {
   readonly quarantine: (observation: WorkerTerminalObservation) => void
   readonly reconcile: (
     observation: WorkerTerminalObservation
-  ) => Promise<ReconcileResult>
+  ) => Promise<WorkerReconciliationResult>
   readonly waitForTransportDrain: () => Promise<void>
 }
 
@@ -18,13 +18,13 @@ export class TerminalSignalAggregator {
   #exit?: { code: null | number; signal?: NodeJS.Signals | null }
   #exitCause?: unknown
   #exitFaulted = false
-  #reconciliation?: Promise<ReconcileResult>
+  #reconciliation?: Promise<WorkerReconciliationResult>
 
   public constructor (callbacks: TerminalSignalCallbacks) {
     this.#callbacks = callbacks
   }
 
-  public error (error: Error): Promise<ReconcileResult> {
+  public error (error: Error): Promise<WorkerReconciliationResult> {
     this.#error ??= error
     return this.#observe()
   }
@@ -33,7 +33,7 @@ export class TerminalSignalAggregator {
     exit: WorkerExit,
     faulted: boolean,
     cause: unknown
-  ): Promise<ReconcileResult> {
+  ): Promise<WorkerReconciliationResult> {
     const observedExit = this.#exit
     this.#exit = {
       code: observedExit?.code ?? exit.code,
@@ -44,12 +44,12 @@ export class TerminalSignalAggregator {
     return this.#observe()
   }
 
-  async #drainAndReconcile (): Promise<ReconcileResult> {
+  async #drainAndReconcile (): Promise<WorkerReconciliationResult> {
     await this.#callbacks.waitForTransportDrain()
     return await this.#callbacks.reconcile(this.#snapshot())
   }
 
-  #observe (): Promise<ReconcileResult> {
+  #observe (): Promise<WorkerReconciliationResult> {
     this.#callbacks.quarantine(this.#snapshot())
     this.#reconciliation ??= this.#drainAndReconcile()
     return this.#reconciliation

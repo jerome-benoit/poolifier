@@ -1,9 +1,9 @@
 import type {
   LifecycleWorker,
-  ReconcileResult,
   WorkerLifecycleCallbacks,
-  WorkerReconcilerInput,
+  WorkerReconciliationContext,
   WorkerReconciliationPreparation,
+  WorkerReconciliationResult,
 } from './lifecycle-types.js'
 
 import {
@@ -18,7 +18,8 @@ const MAX_TIMER_DELAY_MS = 2_147_483_647
 
 const isPreparation = (
   value: unknown
-): value is WorkerReconciliationPreparation => typeof value === 'object' &&
+): value is WorkerReconciliationPreparation =>
+  typeof value === 'object' &&
   value != null &&
   'prepare' in value &&
   typeof value.prepare === 'function' &&
@@ -27,7 +28,9 @@ const isPreparation = (
   'finalizeResidual' in value &&
   typeof value.finalizeResidual === 'function'
 
-export class WorkerReconciler<Worker extends LifecycleWorker = LifecycleWorker> {
+export class WorkerReconciler<
+  Worker extends LifecycleWorker = LifecycleWorker
+> {
   readonly #callbacks: WorkerLifecycleCallbacks<Worker>
 
   public constructor (
@@ -38,8 +41,8 @@ export class WorkerReconciler<Worker extends LifecycleWorker = LifecycleWorker> 
   }
 
   public async reconcile (
-    input: WorkerReconcilerInput<Worker>
-  ): Promise<ReconcileResult> {
+    input: WorkerReconciliationContext<Worker>
+  ): Promise<WorkerReconciliationResult> {
     const failures: WorkerReconciliationFailure[] = []
     const capture = async <Value>(
       stage: WorkerReconciliationStage,
@@ -56,10 +59,7 @@ export class WorkerReconciler<Worker extends LifecycleWorker = LifecycleWorker> 
         if (timeoutMs == null) return await operationPromise
         const timeoutPromise = new Promise<never>((_resolve, reject) => {
           timeout = setTimeout(() => {
-            const error = new WorkerReconciliationTimeoutError(
-              stage,
-              timeoutMs
-            )
+            const error = new WorkerReconciliationTimeoutError(stage, timeoutMs)
             controller.abort(error)
             reject(error)
           }, timeoutMs)
@@ -85,16 +85,16 @@ export class WorkerReconciler<Worker extends LifecycleWorker = LifecycleWorker> 
     const preparation = await capture('prepare', signal =>
       this.#callbacks.reconcile(input.baseTransition, signal)
     )
-    const preparationTimeoutMs = isPreparation(preparation) &&
-      preparation.prepareTimeoutMs != null
-      ? preparation.prepareTimeoutMs >
-        MAX_TIMER_DELAY_MS - PREPARATION_TIMEOUT_OVERHEAD_MS
-        ? null
-        : Math.max(
-          this.phaseTimeoutMs,
-          preparation.prepareTimeoutMs + PREPARATION_TIMEOUT_OVERHEAD_MS
-        )
-      : this.phaseTimeoutMs
+    const preparationTimeoutMs =
+      isPreparation(preparation) && preparation.prepareTimeoutMs != null
+        ? preparation.prepareTimeoutMs >
+          MAX_TIMER_DELAY_MS - PREPARATION_TIMEOUT_OVERHEAD_MS
+          ? null
+          : Math.max(
+            this.phaseTimeoutMs,
+            preparation.prepareTimeoutMs + PREPARATION_TIMEOUT_OVERHEAD_MS
+          )
+        : this.phaseTimeoutMs
     const reconciliationValue = isPreparation(preparation)
       ? await capture(
         'prepare',
