@@ -9,6 +9,8 @@ import type {
   WorkerState,
 } from './lifecycle-types.js'
 
+export const synchronousPhaseSignal = new AbortController().signal
+
 type WorkerReconcileTransition = Readonly<{
   classification: ReconcileClassification
   previousState: WorkerState
@@ -17,7 +19,8 @@ type WorkerReconcileTransition = Readonly<{
 export const compareWorkerHandles = <Worker>(
   left: WorkerHandle<Worker>,
   right: WorkerHandle<Worker>
-): number => left.lease.id - right.lease.id ||
+): number =>
+    left.lease.id - right.lease.id ||
   left.lease.generation - right.lease.generation
 
 export const createWorkerReconcileInput = <Worker extends LifecycleWorker>(

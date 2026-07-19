@@ -16,15 +16,19 @@ import type {
 import {
   createWorkerReconcileInput,
   missingReconcileResult,
+  synchronousPhaseSignal,
   workerHasActiveWork,
 } from './worker-lifecycle-state.js'
 import { WorkerLifecycleTerminalState } from './worker-lifecycle-terminal-state.js'
 import { WorkerReconciler } from './worker-reconciler.js'
 import { WorkerTopologyRegistry } from './worker-topology-registry.js'
-const synchronousPhaseSignal = new AbortController().signal
 
-export class WorkerLifecycleCoordinator<Worker extends LifecycleWorker = LifecycleWorker> {
-  public get topologyEpoch (): number { return this.#topology.epoch }
+export class WorkerLifecycleCoordinator<
+  Worker extends LifecycleWorker = LifecycleWorker
+> {
+  public get topologyEpoch (): number {
+    return this.#topology.epoch
+  }
 
   readonly #callbacks: WorkerLifecycleCallbacks<Worker>
   readonly #reconciler: WorkerReconciler<Worker>
@@ -72,7 +76,7 @@ export class WorkerLifecycleCoordinator<Worker extends LifecycleWorker = Lifecyc
     exit: WorkerExit
   ): Promise<ReconcileResult> {
     const slot = this.#topology.slot(handle)
-    if (slot == null) return Promise.resolve(missingReconcileResult(handle.lease))
+    if (slot == null) { return Promise.resolve(missingReconcileResult(handle.lease)) }
     this.#terminalState.enrichExit(handle, exit)
     if (slot.reconciliation != null) return slot.reconciliation
     if (slot.terminalClassification != null) return this.reconcile(handle)
@@ -144,9 +148,7 @@ export class WorkerLifecycleCoordinator<Worker extends LifecycleWorker = Lifecyc
     return this.#terminalState.quarantine(handle, cause, classification)
   }
 
-  public reconcile (
-    handle: WorkerHandle<Worker>
-  ): Promise<ReconcileResult> {
+  public reconcile (handle: WorkerHandle<Worker>): Promise<ReconcileResult> {
     const slot = this.#topology.slot(handle)
     if (slot == null || slot.state === 'removed') {
       return Promise.resolve(missingReconcileResult(handle.lease))
@@ -162,7 +164,9 @@ export class WorkerLifecycleCoordinator<Worker extends LifecycleWorker = Lifecyc
       allowReplacement: true,
       cause: slot.cause,
       excluded: true,
-      ...(slot.exclusionError != null && { exclusionError: slot.exclusionError }),
+      ...(slot.exclusionError != null && {
+        exclusionError: slot.exclusionError,
+      }),
       classification,
       handle,
     }
@@ -179,13 +183,13 @@ export class WorkerLifecycleCoordinator<Worker extends LifecycleWorker = Lifecyc
       return Promise.resolve(missingReconcileResult(handle.lease))
     }
     if (slot.terminalClassification === 'draining') {
-      if (observation.exit != null) this.#terminalState.enrichExit(handle, observation.exit)
+      if (observation.exit != null) { this.#terminalState.enrichExit(handle, observation.exit) }
       return this.reconcile(handle)
     }
     slot.cause = observation.cause
     slot.terminalClassification = observation.classification
     slot.state = observation.classification
-    if (observation.exit != null) this.#terminalState.enrichExit(handle, observation.exit)
+    if (observation.exit != null) { this.#terminalState.enrichExit(handle, observation.exit) }
     return this.reconcile(handle)
   }
 
@@ -195,7 +199,13 @@ export class WorkerLifecycleCoordinator<Worker extends LifecycleWorker = Lifecyc
 
   public remove (handle: WorkerHandle<Worker>): boolean {
     const slot = this.#topology.slot(handle)
-    if (slot == null || slot.state === 'removed' || slot.reconciliation != null) { return false }
+    if (
+      slot == null ||
+      slot.state === 'removed' ||
+      slot.reconciliation != null
+    ) {
+      return false
+    }
     this.#topology.advance()
     this.#callbacks.exclude(handle, synchronousPhaseSignal)
     this.#callbacks.remove(handle, synchronousPhaseSignal)
@@ -241,19 +251,21 @@ export class WorkerLifecycleCoordinator<Worker extends LifecycleWorker = Lifecyc
     command: WorkerLifecycleCommand<Worker>,
     previousState: WorkerState
   ): Promise<ReconcileResult> {
-    const transition = () => createWorkerReconcileInput(
-      slot,
-      {
-        classification:
-          slot.terminalClassification ?? command.classification,
-        previousState,
-      },
-      this.#callbacks.snapshotOwnedWork(slot.handle.lease)
-    )
+    const transition = () =>
+      createWorkerReconcileInput(
+        slot,
+        {
+          classification: slot.terminalClassification ?? command.classification,
+          previousState,
+        },
+        this.#callbacks.snapshotOwnedWork(slot.handle.lease)
+      )
     return this.#reconciler.reconcile({
       baseTransition: transition(),
       command,
-      finalize: () => { this.#topology.finalize(slot) },
+      finalize: () => {
+        this.#topology.finalize(slot)
+      },
       transition,
     })
   }

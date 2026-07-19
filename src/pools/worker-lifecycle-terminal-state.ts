@@ -6,9 +6,8 @@ import type {
   WorkerLifecycleCallbacks,
 } from './lifecycle-types.js'
 
+import { synchronousPhaseSignal } from './worker-lifecycle-state.js'
 import { WorkerTopologyRegistry } from './worker-topology-registry.js'
-
-const synchronousPhaseSignal = new AbortController().signal
 
 export class WorkerLifecycleTerminalState<
   Worker extends LifecycleWorker = LifecycleWorker
@@ -18,10 +17,7 @@ export class WorkerLifecycleTerminalState<
     private readonly exclude: WorkerLifecycleCallbacks<Worker>['exclude']
   ) {}
 
-  public enrichExit (
-    handle: WorkerHandle<Worker>,
-    exit: WorkerExit
-  ): void {
+  public enrichExit (handle: WorkerHandle<Worker>, exit: WorkerExit): void {
     const slot = this.topology.slot(handle)
     if (slot == null) return
     slot.exit ??= { code: exit.code, signal: exit.signal }
