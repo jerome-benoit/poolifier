@@ -763,7 +763,7 @@ export abstract class AbstractPool<
   }
 
   public destroy (): Promise<void> {
-    return this.poolLifecycle.close(() => this.doDestroy())
+    return this.poolLifecycle.destroy(() => this.doDestroy())
   }
 
   public enableTasksQueue (
@@ -1928,7 +1928,9 @@ export abstract class AbstractPool<
     return await this.taskFunctionTransactionManager.withStableCatalogAdmission(
       () =>
         new Promise<Response>((resolve, reject) => {
-          if (!this.started) { throw new WorkerTerminationError('Worker node terminated by pool') }
+          if (!this.started) {
+            throw new WorkerTerminationError('Worker node terminated by pool')
+          }
           const taskId = randomUUID()
           const task: Task<Data> & { readonly taskId: TaskUUID } = {
             abortable: abortSignal != null,

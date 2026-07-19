@@ -10,7 +10,7 @@ it('applies the stopped starting running command table', async () => {
 
   expect(lifecycle.running).toBe(false)
   expect(() => lifecycle.requireRunning('stopped')).toThrow('stopped')
-  await expect(lifecycle.close(vi.fn())).rejects.toThrow(
+  await expect(lifecycle.destroy(vi.fn())).rejects.toThrow(
     'Cannot destroy an already destroyed pool'
   )
 
@@ -19,7 +19,7 @@ it('applies the stopped starting running command table', async () => {
   expect(() => lifecycle.beginStart()).toThrow(
     'Cannot start an already starting pool'
   )
-  await expect(lifecycle.close(vi.fn())).rejects.toThrow(
+  await expect(lifecycle.destroy(vi.fn())).rejects.toThrow(
     'Cannot destroy a starting pool'
   )
 
@@ -36,8 +36,8 @@ it('commits closing synchronously and shares the destroy barrier', async () => {
   lifecycle.beginStart()
   lifecycle.commitRunning()
 
-  const first = lifecycle.close(() => operation.promise)
-  const second = lifecycle.close(vi.fn())
+  const first = lifecycle.destroy(() => operation.promise)
+  const second = lifecycle.destroy(vi.fn())
 
   expect(lifecycle.destroying).toBe(true)
   expect(second).toBe(first)
@@ -56,7 +56,7 @@ it('restores stopped after start rollback and destroy failure', async () => {
   lifecycle.beginStart()
   lifecycle.commitRunning()
 
-  await expect(lifecycle.close(() => Promise.reject(failure))).rejects.toBe(
+  await expect(lifecycle.destroy(() => Promise.reject(failure))).rejects.toBe(
     failure
   )
   lifecycle.beginStart()
@@ -85,9 +85,10 @@ it('removes tracked promises immediately after fulfillment or rejection', async 
   const lifecycle = new PoolLifecycle()
 
   for (let index = 0; index < 100; index++) {
-    const operation = index % 2 === 0
-      ? Promise.resolve(index)
-      : Promise.reject(new Error(`failure ${index}`))
+    const operation =
+      index % 2 === 0
+        ? Promise.resolve(index)
+        : Promise.reject(new Error(`failure ${index}`))
     lifecycle.track(operation)
     await operation.catch(() => undefined)
   }
@@ -119,7 +120,7 @@ it('reports active tracked failures through destroy', async () => {
   lifecycle.commitRunning()
   lifecycle.track(active.promise)
 
-  const destroy = lifecycle.close(async () => {
+  const destroy = lifecycle.destroy(async () => {
     const failures = collectLifecycleFailures(await lifecycle.drain())
     if (failures.length === 1) throw failures[0]
   })
@@ -135,8 +136,8 @@ it('awaits failed-start cleanup before preserving stopped destroy rejection', as
   const cleanup = Promise.withResolvers()
   lifecycle.track(cleanup.promise)
 
-  const first = lifecycle.close(() => Promise.resolve())
-  const second = lifecycle.close(() => Promise.resolve())
+  const first = lifecycle.destroy(() => Promise.resolve())
+  const second = lifecycle.destroy(() => Promise.resolve())
   expect(second).toBe(first)
   cleanup.resolve()
 

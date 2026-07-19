@@ -1,20 +1,23 @@
-export type PoolState = 'closing' | 'running' | 'starting' | 'stopped'
+export type PoolState = 'destroying' | 'running' | 'starting' | 'stopped'
 
 export const collectLifecycleFailures = (
   outcomes: readonly PromiseSettledResult<unknown>[]
-): readonly Error[] => outcomes.flatMap(outcome =>
-  outcome.status === 'fulfilled'
-    ? []
-    : [outcome.reason instanceof Error
-        ? outcome.reason
-        : new Error('Worker reconciliation rejected', {
-          cause: outcome.reason,
-        })]
-)
+): readonly Error[] =>
+  outcomes.flatMap(outcome =>
+    outcome.status === 'fulfilled'
+      ? []
+      : [
+          outcome.reason instanceof Error
+            ? outcome.reason
+            : new Error('Worker reconciliation rejected', {
+              cause: outcome.reason,
+            }),
+        ]
+  )
 
 export class PoolLifecycle {
   public get destroying (): boolean {
-    return this.#state === 'closing'
+    return this.#state === 'destroying'
   }
 
   public get running (): boolean {
@@ -40,7 +43,7 @@ export class PoolLifecycle {
 
   public beginStart (): void {
     switch (this.#state) {
-      case 'closing':
+      case 'destroying':
         throw new Error('Cannot start a destroying pool')
       case 'running':
         throw new Error('Cannot start an already started pool')
@@ -51,15 +54,26 @@ export class PoolLifecycle {
     }
   }
 
-  public close (operation: () => Promise<void>): Promise<void> {
+  public commitRunning (): void {
+    if (this.#state !== 'starting') {
+      throw new Error('Pool is not starting')
+    }
+    this.#state = 'running'
+  }
+
+  public commitStopped (): void {
+    this.#state = 'stopped'
+  }
+
+  public destroy (operation: () => Promise<void>): Promise<void> {
     switch (this.#state) {
-      case 'closing':
+      case 'destroying':
         return (
           this.#destroyBarrier ??
           Promise.reject(new Error('Pool destroy barrier is unavailable'))
         )
       case 'running': {
-        this.#state = 'closing'
+        this.#state = 'destroying'
         const barrier = Promise.resolve()
           .then(operation)
           .finally(() => {
@@ -88,17 +102,6 @@ export class PoolLifecycle {
           new Error('Cannot destroy an already destroyed pool')
         )
     }
-  }
-
-  public commitRunning (): void {
-    if (this.#state !== 'starting') {
-      throw new Error('Pool is not starting')
-    }
-    this.#state = 'running'
-  }
-
-  public commitStopped (): void {
-    this.#state = 'stopped'
   }
 
   public async drain (): Promise<readonly PromiseSettledResult<unknown>[]> {
@@ -130,15 +133,19 @@ export class PoolLifecycle {
 
   public track (promise: Promise<unknown>): void {
     this.#promises.add(promise)
-    promise.then(
-      () => {
-        return !this.#draining && this.#promises.delete(promise)
-      },
-      () => {
-        return !this.#draining && this.#promises.delete(promise)
-      }
-    ).catch((error: unknown) => {
-      queueMicrotask(() => { throw error })
-    })
+    promise
+      .then(
+        () => {
+          return !this.#draining && this.#promises.delete(promise)
+        },
+        () => {
+          return !this.#draining && this.#promises.delete(promise)
+        }
+      )
+      .catch((error: unknown) => {
+        queueMicrotask(() => {
+          throw error
+        })
+      })
   }
 }
