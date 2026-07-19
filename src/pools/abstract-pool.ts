@@ -1137,9 +1137,6 @@ export abstract class AbstractPool<
       this.checkAndEmitDynamicWorkerCreationEvents()
       return workerNodeKey
     } catch (setupError) {
-      if (setupError instanceof Error) {
-        return this.rollbackWorkerNodeSetup(workerNode, handle, setupError)
-      }
       return this.rollbackWorkerNodeSetup(workerNode, handle, setupError)
     }
   }
