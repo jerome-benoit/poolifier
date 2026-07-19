@@ -423,11 +423,10 @@ export abstract class AbstractWorker<
       return
     }
     let fn: TaskFunction<Data, Response>
-    if (abortable === true) {
+    if (abortable === true && taskId != null) {
       fn = this.getAbortableTaskFunction(
         taskFunctionName,
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        taskId!,
+        taskId,
         taskFunctionObject.taskFunction
       )
     } else {
