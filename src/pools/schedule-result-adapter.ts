@@ -38,6 +38,9 @@ export class ScheduleResultAdapter<Worker extends EventEmitter, Data> {
 
   public apply (result: ScheduleResult<Worker>, owner?: LifecycleOwner): void {
     switch (result.kind) {
+      case 'committed':
+        this.applyCommit(result, owner)
+        return
       case 'retry':
         if (result.error != null) {
           this.callbacks.publisher.defer(result.error, owner)
@@ -46,8 +49,10 @@ export class ScheduleResultAdapter<Worker extends EventEmitter, Data> {
       case 'settled':
         this.applySettlement(result, owner)
         return
-      case 'committed':
-        this.applyCommit(result, owner)
+      default: {
+        const exhaustive: never = result
+        return exhaustive
+      }
     }
   }
 

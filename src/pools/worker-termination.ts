@@ -174,6 +174,10 @@ export const terminateWorker = async (
       case WorkerTypes.thread:
         await terminateThreadWorker(worker, exit, grace.promise)
         break
+      default: {
+        const exhaustive: never = type
+        throw new Error(`Unknown worker type '${String(exhaustive)}'`)
+      }
     }
   } finally {
     grace.clear()

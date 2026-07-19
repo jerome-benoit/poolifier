@@ -42,7 +42,8 @@ export class PoolLifecycle {
   }
 
   public beginStart (): void {
-    switch (this.#state) {
+    const state = this.#state
+    switch (state) {
       case 'destroying':
         throw new Error('Cannot start a destroying pool')
       case 'running':
@@ -51,6 +52,11 @@ export class PoolLifecycle {
         throw new Error('Cannot start an already starting pool')
       case 'stopped':
         this.#state = 'starting'
+        break
+      default: {
+        const exhaustive: never = state
+        throw new Error(`Unexpected pool state '${String(exhaustive)}'`)
+      }
     }
   }
 
@@ -66,7 +72,8 @@ export class PoolLifecycle {
   }
 
   public destroy (operation: () => Promise<void>): Promise<void> {
-    switch (this.#state) {
+    const state = this.#state
+    switch (state) {
       case 'destroying':
         return (
           this.#destroyBarrier ??
@@ -101,6 +108,10 @@ export class PoolLifecycle {
         return Promise.reject(
           new Error('Cannot destroy an already destroyed pool')
         )
+      default: {
+        const exhaustive: never = state
+        throw new Error(`Unexpected pool state '${String(exhaustive)}'`)
+      }
     }
   }
 
