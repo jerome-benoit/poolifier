@@ -3,16 +3,16 @@ import { randomUUID } from 'node:crypto'
 import type { TaskFunctionObject } from '../worker/task-functions.js'
 import type { WorkerHandle } from './lifecycle-types.js'
 import type { TaskFunctionCatalogSnapshot } from './task-function-catalog.js'
-import type { TaskFunctionTransactionFailure } from './task-function-transaction-error.js'
 import type {
   TaskFunctionTransactionCallbacks,
+  TaskFunctionTransactionFailure,
   TaskFunctionTransactionRequest,
 } from './task-function-transaction-types.js'
 
 import { DEFAULT_TASK_NAME } from '../utils.js'
 import { TaskFunctionCatalogSynchronizer } from './task-function-catalog-synchronizer.js'
 import { TaskFunctionCatalog } from './task-function-catalog.js'
-import { TaskFunctionTransactionError } from './task-function-transaction-error.js'
+import { TaskFunctionTransactionError } from './task-function-transaction-types.js'
 
 export type {
   TaskFunctionTransactionCallbacks,
@@ -22,10 +22,17 @@ export type {
 const TRANSACTION_TIMEOUT = 30_000
 
 type Mutation<Data, Response> = Readonly<{
-  candidate: (catalog: TaskFunctionCatalog<Data, Response>) => TaskFunctionCatalog<Data, Response>
+  candidate: (
+    catalog: TaskFunctionCatalog<Data, Response>
+  ) => TaskFunctionCatalog<Data, Response>
   forward: Omit<TaskFunctionTransactionRequest<Data, Response>, 'operationId'>
-  inverse: (catalog: TaskFunctionCatalog<Data, Response>) => Omit<TaskFunctionTransactionRequest<Data, Response>, 'operationId'>
-  validate?: (catalog: TaskFunctionCatalog<Data, Response>, workerCount: number) => boolean
+  inverse: (
+    catalog: TaskFunctionCatalog<Data, Response>
+  ) => Omit<TaskFunctionTransactionRequest<Data, Response>, 'operationId'>
+  validate?: (
+    catalog: TaskFunctionCatalog<Data, Response>,
+    workerCount: number
+  ) => boolean
 }>
 
 type SendOutcome<Worker> = Readonly<{
@@ -34,7 +41,11 @@ type SendOutcome<Worker> = Readonly<{
   status: 'acknowledged' | 'failed' | 'uncertain'
 }>
 
-export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = unknown> {
+export class TaskFunctionTransactionManager<
+  Worker,
+  Data = unknown,
+  Response = unknown
+> {
   public get snapshot (): TaskFunctionCatalogSnapshot<Data, Response> {
     return this.#catalog.snapshot()
   }
@@ -44,9 +55,15 @@ export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = u
   #initialDefaultName?: string
   #lane: Promise<void> = Promise.resolve()
   #pendingMutations = 0
-  readonly #synchronizer: TaskFunctionCatalogSynchronizer<Worker, Data, Response>
+  readonly #synchronizer: TaskFunctionCatalogSynchronizer<
+    Worker,
+    Data,
+    Response
+  >
 
-  public constructor (callbacks: TaskFunctionTransactionCallbacks<Worker, Data, Response>) {
+  public constructor (
+    callbacks: TaskFunctionTransactionCallbacks<Worker, Data, Response>
+  ) {
     this.#callbacks = callbacks
     this.#synchronizer = new TaskFunctionCatalogSynchronizer({
       initialDefaultName: () => {
@@ -64,7 +81,10 @@ export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = u
     })
   }
 
-  public add (name: string, taskFunction: TaskFunctionObject<Data, Response>): Promise<boolean> {
+  public add (
+    name: string,
+    taskFunction: TaskFunctionObject<Data, Response>
+  ): Promise<boolean> {
     return this.#enqueue({
       candidate: catalog => catalog.add(name, taskFunction),
       forward: { name, operation: 'add', taskFunction },
@@ -88,11 +108,16 @@ export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = u
   }
 
   public remove (name: string): Promise<boolean> {
-    const hasStaticTaskFunction = this.#callbacks.hasStaticTaskFunction?.(name) === true
+    const hasStaticTaskFunction =
+      this.#callbacks.hasStaticTaskFunction?.(name) === true
     return this.#enqueue({
       candidate: catalog => catalog.remove(name, hasStaticTaskFunction),
       forward: { name, operation: 'remove' },
-      inverse: catalog => ({ name, operation: 'add', taskFunction: catalog.get(name) }),
+      inverse: catalog => ({
+        name,
+        operation: 'add',
+        taskFunction: catalog.get(name),
+      }),
       validate: catalog =>
         catalog.has(name) &&
         (catalog.defaultName !== name || hasStaticTaskFunction),
@@ -136,7 +161,9 @@ export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = u
   #enqueue (mutation: Mutation<Data, Response>): Promise<boolean> {
     ++this.#pendingMutations
     const excluded = new Set<WorkerHandle<Worker>>()
-    const result = this.#lane.then(async () => await this.#mutate(mutation, excluded))
+    const result = this.#lane.then(
+      async () => await this.#mutate(mutation, excluded)
+    )
     const settled = result.then(
       () => {
         --this.#pendingMutations
@@ -163,7 +190,12 @@ export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = u
     const handles = this.#callbacks.snapshotReadyHandles()
     if (mutation.validate?.(committed, handles.length) === false) {
       throw new TaskFunctionTransactionError(operationId, [
-        { cause: new TypeError('Task function mutation is not valid for the committed catalog'), phase: 'validation' },
+        {
+          cause: new TypeError(
+            'Task function mutation is not valid for the committed catalog'
+          ),
+          phase: 'validation',
+        },
       ])
     }
     const epoch = this.#callbacks.topologyEpoch()
@@ -171,12 +203,16 @@ export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = u
     let topologyChanged = false
     const unsubscribe = this.#callbacks.subscribeTopologyChanges(() => {
       topologyChanged = true
-      controller.abort(new Error('Worker topology changed during task function transaction'))
+      controller.abort(
+        new Error('Worker topology changed during task function transaction')
+      )
     })
     const forward = { ...mutation.forward, operationId }
     const outcomes = await this.#sendPhase(handles, forward, controller)
     unsubscribe()
-    const failures = outcomes.filter(outcome => outcome.status !== 'acknowledged')
+    const failures = outcomes.filter(
+      outcome => outcome.status !== 'acknowledged'
+    )
     if (failures.length === 0 && this.#callbacks.topologyEpoch() === epoch) {
       this.#catalog = mutation.candidate(committed)
       const snapshot = this.snapshot
@@ -200,7 +236,9 @@ export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = u
     }))
     if (failures.length === 0) {
       causes.push({
-        cause: new Error('Worker topology changed during task function transaction'),
+        cause: new Error(
+          'Worker topology changed during task function transaction'
+        ),
         phase: 'topology',
       })
     }
@@ -213,8 +251,13 @@ export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = u
         excluded.add(outcome.handle)
       }
     }
-    const acknowledged = outcomes.filter(outcome => outcome.status === 'acknowledged').reverse()
-    const compensation = { ...mutation.inverse(committed), operationId: `${operationId}:compensate` }
+    const acknowledged = outcomes
+      .filter(outcome => outcome.status === 'acknowledged')
+      .reverse()
+    const compensation = {
+      ...mutation.inverse(committed),
+      operationId: `${operationId}:compensate`,
+    }
     const compensationOutcomes = await this.#sendPhase(
       acknowledged.map(outcome => outcome.handle),
       compensation,
@@ -222,7 +265,11 @@ export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = u
     )
     for (const outcome of compensationOutcomes) {
       if (outcome.status === 'acknowledged') continue
-      causes.push({ cause: outcome.cause, lease: outcome.handle.lease, phase: 'compensation' })
+      causes.push({
+        cause: outcome.cause,
+        lease: outcome.handle.lease,
+        phase: 'compensation',
+      })
       if (
         !excluded.has(outcome.handle) &&
         this.#callbacks.exclude(outcome.handle, outcome.cause)
@@ -240,13 +287,22 @@ export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = u
   ): Promise<readonly SendOutcome<Worker>[]> {
     if (handles.length === 0) return []
     const timeout = setTimeout(() => {
-      controller.abort(new Error(`Task function ${request.operation} timed out`))
+      controller.abort(
+        new Error(`Task function ${request.operation} timed out`)
+      )
     }, this.#callbacks.timeout?.() ?? TRANSACTION_TIMEOUT)
     const promises = handles.map(async handle => {
       try {
-        const acknowledged = await this.#callbacks.send(handle, request, controller.signal)
+        const acknowledged = await this.#callbacks.send(
+          handle,
+          request,
+          controller.signal
+        )
         if (acknowledged) {
-          return { handle, status: 'acknowledged' } satisfies SendOutcome<Worker>
+          return {
+            handle,
+            status: 'acknowledged',
+          } satisfies SendOutcome<Worker>
         }
         controller.abort(new Error('Worker rejected task function operation'))
         return {
@@ -256,7 +312,11 @@ export class TaskFunctionTransactionManager<Worker, Data = unknown, Response = u
         } satisfies SendOutcome<Worker>
       } catch (cause) {
         if (!controller.signal.aborted) controller.abort(cause)
-        return { cause, handle, status: 'uncertain' } satisfies SendOutcome<Worker>
+        return {
+          cause,
+          handle,
+          status: 'uncertain',
+        } satisfies SendOutcome<Worker>
       }
     })
     const outcomes = await Promise.all(promises)

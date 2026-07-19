@@ -5,17 +5,20 @@ import {
   PoolEvents,
   WorkerCrashError,
 } from '../../lib/index.mjs'
-import { TaskFunctionTransactionError } from '../../lib/pools/task-function-transaction-error.mjs'
+import { TaskFunctionTransactionError } from '../../lib/pools/task-function-transaction-types.mjs'
 import { createCrashRecoveryTestContext } from './crash-recovery-test-support.mjs'
 
-const workerFile = './tests/worker-files/thread/testMultipleTaskFunctionsWorker.mjs'
+const workerFile =
+  './tests/worker-files/thread/testMultipleTaskFunctionsWorker.mjs'
 describe('Task function operation crash rejection', () => {
   const { trackPool } = createCrashRecoveryTestContext()
 
   const startBlockedPool = async () => {
-    const pool = trackPool(new FixedThreadPool(2, workerFile, {
-      errorHandler: () => undefined,
-    }))
+    const pool = trackPool(
+      new FixedThreadPool(2, workerFile, {
+        errorHandler: () => undefined,
+      })
+    )
     await new Promise(resolve => pool.emitter.once(PoolEvents.ready, resolve))
     const workerNode = pool.workerNodes[0]
     const executionReactions = [
@@ -27,7 +30,9 @@ describe('Task function operation crash rejection', () => {
 
   const expectCrashRejection = async (operation, workerNode) => {
     const operationReaction = operation.catch(error => error)
-    const terminated = new Promise(resolve => workerNode.once('terminated', resolve))
+    const terminated = new Promise(resolve =>
+      workerNode.once('terminated', resolve)
+    )
     await workerNode.worker.terminate()
     const rejected = await operationReaction
     expect(rejected).toBeInstanceOf(TaskFunctionTransactionError)
@@ -52,9 +57,11 @@ describe('Task function operation crash rejection', () => {
   })
 
   it('rejects removeTaskFunction for the crashed worker generation', async () => {
-    const pool = trackPool(new FixedThreadPool(2, workerFile, {
-      errorHandler: () => undefined,
-    }))
+    const pool = trackPool(
+      new FixedThreadPool(2, workerFile, {
+        errorHandler: () => undefined,
+      })
+    )
     await new Promise(resolve => pool.emitter.once(PoolEvents.ready, resolve))
     await pool.addTaskFunction('identity', data => data)
     const workerNode = pool.workerNodes[0]

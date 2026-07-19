@@ -7,11 +7,15 @@ import type {
 } from './task-function-catalog.js'
 import type { TaskFunctionTransactionRequest } from './task-function-transaction-types.js'
 
-import { TaskFunctionTransactionError } from './task-function-transaction-error.js'
+import { TaskFunctionTransactionError } from './task-function-transaction-types.js'
 
 const REPLAY_TIMEOUT = 30_000
 
-export interface TaskFunctionCatalogSynchronizationCallbacks<Worker, Data, Response> {
+export interface TaskFunctionCatalogSynchronizationCallbacks<
+  Worker,
+  Data,
+  Response
+> {
   readonly initialDefaultName: () => string
   readonly operationId?: () => string
   readonly quarantine: (handle: WorkerHandle<Worker>, cause: unknown) => void
@@ -60,9 +64,16 @@ export class TaskFunctionCatalogSynchronizer<Worker, Data, Response> {
   #delta (
     applied: TaskFunctionCatalogSnapshot<Data, Response>,
     target: TaskFunctionCatalogSnapshot<Data, Response>
-  ): readonly Omit<TaskFunctionTransactionRequest<Data, Response>, 'operationId'>[] {
-    const targetEntries = new Map(target.entries.map(entry => [entry.name, entry]))
-    const appliedEntries = new Map(applied.entries.map(entry => [entry.name, entry]))
+  ): readonly Omit<
+    TaskFunctionTransactionRequest<Data, Response>,
+    'operationId'
+  >[] {
+    const targetEntries = new Map(
+      target.entries.map(entry => [entry.name, entry])
+    )
+    const appliedEntries = new Map(
+      applied.entries.map(entry => [entry.name, entry])
+    )
     const removals = applied.entries
       .filter(entry => !targetEntries.has(entry.name))
       .map(entry => ({ name: entry.name, operation: 'remove' as const }))
@@ -87,7 +98,9 @@ export class TaskFunctionCatalogSynchronizer<Worker, Data, Response> {
     const operationId = this.callbacks.operationId?.() ?? randomUUID()
     const controller = new AbortController()
     const timeout = setTimeout(() => {
-      controller.abort(new Error(`Task function replay ${request.operation} timed out`))
+      controller.abort(
+        new Error(`Task function replay ${request.operation} timed out`)
+      )
     }, REPLAY_TIMEOUT)
     try {
       const acknowledged = await this.callbacks.send(

@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { WorkerTerminationError } from '../../../lib/index.mjs'
-import { TaskFunctionTransactionError } from '../../../lib/pools/task-function-transaction-error.mjs'
+import { TaskFunctionTransactionError } from '../../../lib/pools/task-function-transaction-types.mjs'
 import { DEFAULT_TASK_NAME } from '../../../lib/utils.mjs'
-import { createTransactionFixture, taskFunction } from './task-function-transaction-fixture.mjs'
+import {
+  createTransactionFixture,
+  taskFunction,
+} from './task-function-transaction-fixture.mjs'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -27,8 +30,8 @@ describe('TaskFunctionTransactionManager', () => {
       await fixture.manager.add('one', taskFunction('one'))
       const before = fixture.manager.snapshot.revision
 
-      if (operation === 'add') await fixture.manager.add('two', taskFunction('two'))
-      if (operation === 'replace') await fixture.manager.add('one', taskFunction('replacement'))
+      if (operation === 'add') { await fixture.manager.add('two', taskFunction('two')) }
+      if (operation === 'replace') { await fixture.manager.add('one', taskFunction('replacement')) }
       if (operation === 'remove') await fixture.manager.remove('one')
       if (operation === 'default') await fixture.manager.setDefault('one')
 
@@ -41,7 +44,9 @@ describe('TaskFunctionTransactionManager', () => {
     const thrown = { source: 'projection' }
     const postCommitErrors = []
     const fixture = createTransactionFixture({
-      onCommit: () => { throw thrown },
+      onCommit: () => {
+        throw thrown
+      },
       onPostCommitError: (error, snapshot) => {
         postCommitErrors.push({ error, snapshot })
       },
@@ -54,7 +59,10 @@ describe('TaskFunctionTransactionManager', () => {
     expect(postCommitErrors).toStrictEqual([
       { error: thrown, snapshot: fixture.manager.snapshot },
     ])
-    expect(fixture.sent.map(message => message.operation)).toStrictEqual(['add', 'add'])
+    expect(fixture.sent.map(message => message.operation)).toStrictEqual([
+      'add',
+      'add',
+    ])
     expect(fixture.quarantined).toStrictEqual([])
   })
 
@@ -63,30 +71,40 @@ describe('TaskFunctionTransactionManager', () => {
     const projectionError = new Error('projection failed')
     const reportingError = new Error('reporting failed')
     const fixture = createTransactionFixture({
-      onCommit: () => { throw projectionError },
+      onCommit: () => {
+        throw projectionError
+      },
       onPostCommitError: error => {
         observed.push(error)
         throw reportingError
       },
     })
 
-    await expect(
-      fixture.manager.add('one', taskFunction('one'))
-    ).resolves.toBe(true)
+    await expect(fixture.manager.add('one', taskFunction('one'))).resolves.toBe(
+      true
+    )
     expect(fixture.manager.snapshot.revision).toBe(1)
     expect(observed).toStrictEqual([projectionError])
     expect(fixture.quarantined).toStrictEqual([])
-    expect(fixture.sent.map(message => message.operation)).toStrictEqual(['add', 'add'])
+    expect(fixture.sent.map(message => message.operation)).toStrictEqual([
+      'add',
+      'add',
+    ])
     expect(fixture.deferredErrors).toStrictEqual([reportingError])
   })
 
   it('serializes mutations in invocation order and admits dispatch after commit', async () => {
     const fixture = createTransactionFixture({ automatic: false })
     const first = fixture.manager.add('one', taskFunction('one'))
-    const admitted = fixture.manager.withStableCatalogAdmission(snapshot => snapshot.revision)
+    const admitted = fixture.manager.withStableCatalogAdmission(
+      snapshot => snapshot.revision
+    )
     const second = fixture.manager.add('two', taskFunction('two'))
     await fixture.sentCount(2)
-    expect(fixture.sent.map(message => message.name)).toStrictEqual(['one', 'one'])
+    expect(fixture.sent.map(message => message.name)).toStrictEqual([
+      'one',
+      'one',
+    ])
 
     fixture.ackAll()
     await first
@@ -103,7 +121,10 @@ describe('TaskFunctionTransactionManager', () => {
     await fixture.sentCount(2)
     const controller = new AbortController()
     const admit = vi.fn()
-    const admission = fixture.manager.withStableCatalogAdmission(admit, controller.signal)
+    const admission = fixture.manager.withStableCatalogAdmission(
+      admit,
+      controller.signal
+    )
 
     controller.abort(new Error('task aborted'))
     fixture.ackAll()
@@ -139,8 +160,12 @@ describe('TaskFunctionTransactionManager', () => {
     fixture.nack(2)
 
     await expect(operation).rejects.toBeInstanceOf(TaskFunctionTransactionError)
-    expect(fixture.sent.map(message => [message.workerId, message.operation])).toStrictEqual([
-      [1, 'add'], [2, 'add'], [1, 'remove'],
+    expect(
+      fixture.sent.map(message => [message.workerId, message.operation])
+    ).toStrictEqual([
+      [1, 'add'],
+      [2, 'add'],
+      [1, 'remove'],
     ])
     expect(fixture.manager.snapshot.revision).toBe(0)
     expect(fixture.quarantined).toStrictEqual([])
@@ -177,8 +202,12 @@ describe('TaskFunctionTransactionManager', () => {
     })
     expect(fixture.manager.snapshot.revision).toBe(0)
     expect(fixture.commits).toStrictEqual([])
-    expect(fixture.sent.map(message => [message.workerId, message.operation])).toStrictEqual([
-      [1, 'add'], [2, 'add'], [1, 'remove'],
+    expect(
+      fixture.sent.map(message => [message.workerId, message.operation])
+    ).toStrictEqual([
+      [1, 'add'],
+      [2, 'add'],
+      [1, 'remove'],
     ])
     expect(vi.getTimerCount()).toBe(0)
   })
@@ -229,7 +258,9 @@ describe('TaskFunctionTransactionManager', () => {
       workerId: 1,
     })
     expect(fixture.manager.snapshot).toStrictEqual(before)
-    expect(fixture.quarantined.map(item => item.handle.lease.id)).toStrictEqual([2])
+    expect(fixture.quarantined.map(item => item.handle.lease.id)).toStrictEqual(
+      [2]
+    )
   })
 
   it('rejects default mutation until a canonical static default is known', async () => {
@@ -239,9 +270,9 @@ describe('TaskFunctionTransactionManager', () => {
       workers: 0,
     })
 
-    await expect(fixture.manager.setDefault('factorial')).rejects.toBeInstanceOf(
-      TaskFunctionTransactionError
-    )
+    await expect(
+      fixture.manager.setDefault('factorial')
+    ).rejects.toBeInstanceOf(TaskFunctionTransactionError)
 
     expect(fixture.manager.snapshot).toMatchObject({
       defaultName: DEFAULT_TASK_NAME,
@@ -270,7 +301,10 @@ describe('TaskFunctionTransactionManager', () => {
       },
     ])
     expect(fixture.quarantined.map(item => item.handle.lease.id)).toContain(1)
-    expect(fixture.sent.at(-1)).toMatchObject({ operation: 'remove', workerId: 2 })
+    expect(fixture.sent.at(-1)).toMatchObject({
+      operation: 'remove',
+      workerId: 2,
+    })
     expect(fixture.listenerCount()).toBe(0)
   })
 
@@ -293,10 +327,9 @@ describe('TaskFunctionTransactionManager', () => {
     )
     expect(error.cause).toBe(error.failures[0].cause)
     expect(fixture.manager.snapshot.revision).toBe(0)
-    expect(fixture.sent.slice(2).map(message => message.operation)).toStrictEqual([
-      'remove',
-      'remove',
-    ])
+    expect(
+      fixture.sent.slice(2).map(message => message.operation)
+    ).toStrictEqual(['remove', 'remove'])
   })
 
   it('quarantines a crashed lease and any peer with an uncertain forward result', async () => {
@@ -307,7 +340,9 @@ describe('TaskFunctionTransactionManager', () => {
     fixture.crash(1, new Error('worker crashed'))
 
     await expect(operation).rejects.toBeInstanceOf(TaskFunctionTransactionError)
-    expect(fixture.quarantined.map(item => item.handle.lease.id)).toStrictEqual([1, 2])
+    expect(fixture.quarantined.map(item => item.handle.lease.id)).toStrictEqual(
+      [1, 2]
+    )
     expect(fixture.listenerCount()).toBe(0)
   })
 
@@ -329,7 +364,9 @@ describe('TaskFunctionTransactionManager', () => {
     await expect(operation).rejects.toBeInstanceOf(TaskFunctionTransactionError)
     await Promise.all(fixture.reconcileAdmissions)
     expect(fixture.reconciled.map(handle => handle.lease.id)).toStrictEqual([2])
-    await expect(Promise.all(fixture.reconcileAdmissions)).resolves.toStrictEqual([0])
+    await expect(
+      Promise.all(fixture.reconcileAdmissions)
+    ).resolves.toStrictEqual([0])
   })
 
   it('uses separate thirty-second forward and compensation timeouts', async () => {
@@ -343,34 +380,45 @@ describe('TaskFunctionTransactionManager', () => {
     fixture.ack(1)
 
     await vi.advanceTimersByTimeAsync(30_000)
-    expect(fixture.sent.at(-1)).toMatchObject({ operation: 'remove', workerId: 1 })
+    expect(fixture.sent.at(-1)).toMatchObject({
+      operation: 'remove',
+      workerId: 1,
+    })
     await vi.advanceTimersByTimeAsync(30_000)
 
     await expect(operation).rejects.toBeInstanceOf(TaskFunctionTransactionError)
-    expect(fixture.quarantined.map(item => item.handle.lease.id)).toStrictEqual([2, 1])
+    expect(fixture.quarantined.map(item => item.handle.lease.id)).toStrictEqual(
+      [2, 1]
+    )
     expect(vi.getTimerCount()).toBe(0)
   })
 
   it.each([
     ['ACK', fixture => fixture.ackAll()],
-    ['NACK', fixture => {
-      fixture.ack(1)
-      fixture.nack(2)
-    }],
-  ])('removes the forward timeout immediately after an early %s outcome', async (_, settle) => {
-    vi.useFakeTimers()
-    const fixture = createTransactionFixture({ automatic: false })
-    const operation = fixture.manager.add('one', taskFunction('one'))
-    await vi.advanceTimersByTimeAsync(0)
+    [
+      'NACK',
+      fixture => {
+        fixture.ack(1)
+        fixture.nack(2)
+      },
+    ],
+  ])(
+    'removes the forward timeout immediately after an early %s outcome',
+    async (_, settle) => {
+      vi.useFakeTimers()
+      const fixture = createTransactionFixture({ automatic: false })
+      const operation = fixture.manager.add('one', taskFunction('one'))
+      await vi.advanceTimersByTimeAsync(0)
 
-    settle(fixture)
-    await vi.advanceTimersByTimeAsync(0)
-    await operation.catch(() => undefined)
+      settle(fixture)
+      await vi.advanceTimersByTimeAsync(0)
+      await operation.catch(() => undefined)
 
-    expect(vi.getTimerCount()).toBe(0)
-    await vi.advanceTimersByTimeAsync(30_000)
-    expect(vi.getTimerCount()).toBe(0)
-  })
+      expect(vi.getTimerCount()).toBe(0)
+      await vi.advanceTimersByTimeAsync(30_000)
+      expect(vi.getTimerCount()).toBe(0)
+    }
+  )
 
   it('rejects removing the only implementation of the logical default', async () => {
     const fixture = createTransactionFixture({ workers: 0 })
@@ -384,13 +432,16 @@ describe('TaskFunctionTransactionManager', () => {
       defaultName: 'one',
       revision: 2,
     })
-    await expect(fixture.manager.setDefault('worker-file-only')).rejects.toBeInstanceOf(
-      TaskFunctionTransactionError
-    )
+    await expect(
+      fixture.manager.setDefault('worker-file-only')
+    ).rejects.toBeInstanceOf(TaskFunctionTransactionError)
   })
 
   it('keeps the logical default when removing an overlay backed by static code', async () => {
-    const fixture = createTransactionFixture({ staticNames: ['one'], workers: 0 })
+    const fixture = createTransactionFixture({
+      staticNames: ['one'],
+      workers: 0,
+    })
     await fixture.manager.add('one', taskFunction('overlay'))
     await fixture.manager.setDefault('one')
 
@@ -412,7 +463,9 @@ describe('TaskFunctionTransactionManager', () => {
     expect(Object.isFrozen(snapshot.entries)).toBe(true)
     expect(Object.isFrozen(snapshot.entries[0])).toBe(true)
     expect(() => snapshot.entries.push({ name: 'two' })).toThrow()
-    expect(fixture.manager.snapshot.entries.map(entry => entry.name)).toStrictEqual(['one'])
+    expect(
+      fixture.manager.snapshot.entries.map(entry => entry.name)
+    ).toStrictEqual(['one'])
   })
 
   it('restores the exact previous function and default during compensation', async () => {
@@ -428,15 +481,23 @@ describe('TaskFunctionTransactionManager', () => {
     fixture.ack(1)
     fixture.nack(2)
     await expect(replace).rejects.toBeInstanceOf(TaskFunctionTransactionError)
-    expect(fixture.sent.at(-1)).toMatchObject({ operation: 'add', taskFunction: original })
+    expect(fixture.sent.at(-1)).toMatchObject({
+      operation: 'add',
+      taskFunction: original,
+    })
 
     const sentBeforeDefault = fixture.sent.length
     const changeDefault = fixture.manager.setDefault('execute')
     await fixture.sentCount(sentBeforeDefault + 2)
     fixture.ack(1)
     fixture.nack(2)
-    await expect(changeDefault).rejects.toBeInstanceOf(TaskFunctionTransactionError)
-    expect(fixture.sent.at(-1)).toMatchObject({ name: 'one', operation: 'default' })
+    await expect(changeDefault).rejects.toBeInstanceOf(
+      TaskFunctionTransactionError
+    )
+    expect(fixture.sent.at(-1)).toMatchObject({
+      name: 'one',
+      operation: 'default',
+    })
   })
 
   it('replays entries in name order and the concrete default last', async () => {
@@ -448,7 +509,9 @@ describe('TaskFunctionTransactionManager', () => {
 
     await fixture.manager.synchronize(fixture.handles[0])
 
-    expect(fixture.sent.map(({ name, operation }) => [name, operation])).toStrictEqual([
+    expect(
+      fixture.sent.map(({ name, operation }) => [name, operation])
+    ).toStrictEqual([
       ['alpha', 'add'],
       ['zeta', 'add'],
       ['zeta', 'default'],
@@ -462,7 +525,9 @@ describe('TaskFunctionTransactionManager', () => {
 
     await fixture.manager.synchronize(fixture.handles[0])
 
-    expect(fixture.sent.map(message => message.operation)).toStrictEqual(['add'])
+    expect(fixture.sent.map(message => message.operation)).toStrictEqual([
+      'add',
+    ])
   })
 
   it('replays only the logical default after removing a static shadow overlay', async () => {
@@ -478,9 +543,9 @@ describe('TaskFunctionTransactionManager', () => {
 
     await fixture.manager.synchronize(fixture.handles[0])
 
-    expect(fixture.sent.map(({ name, operation }) => [name, operation])).toStrictEqual([
-      ['factorial', 'default'],
-    ])
+    expect(
+      fixture.sent.map(({ name, operation }) => [name, operation])
+    ).toStrictEqual([['factorial', 'default']])
   })
 
   it('applies add, remove, and default deltas until the replay revision converges', async () => {
@@ -506,13 +571,20 @@ describe('TaskFunctionTransactionManager', () => {
     fixture.ack(1)
 
     await fixture.sentCount(replayDeltaStart + 1)
-    expect(fixture.sent.slice(replayDeltaStart)).toContainEqual(expect.objectContaining({ name: 'remove-me', operation: 'remove' }))
+    expect(fixture.sent.slice(replayDeltaStart)).toContainEqual(
+      expect.objectContaining({ name: 'remove-me', operation: 'remove' })
+    )
     fixture.ack(1)
     await fixture.sentCount(replayDeltaStart + 2)
-    expect(fixture.sent.slice(replayDeltaStart)).toContainEqual(expect.objectContaining({ name: 'added', operation: 'add' }))
+    expect(fixture.sent.slice(replayDeltaStart)).toContainEqual(
+      expect.objectContaining({ name: 'added', operation: 'add' })
+    )
     fixture.ack(1)
     await fixture.sentCount(replayDeltaStart + 3)
-    expect(fixture.sent.at(-1)).toMatchObject({ name: 'added', operation: 'default' })
+    expect(fixture.sent.at(-1)).toMatchObject({
+      name: 'added',
+      operation: 'default',
+    })
     fixture.ack(1)
 
     await expect(replay).resolves.toBe(expectedRevision)
@@ -528,8 +600,12 @@ describe('TaskFunctionTransactionManager', () => {
     const replayOutcome = replay.catch(error => error)
     await vi.advanceTimersByTimeAsync(30_000)
 
-    await expect(replayOutcome).resolves.toBeInstanceOf(TaskFunctionTransactionError)
-    expect(fixture.quarantined.map(item => item.handle.lease.id)).toStrictEqual([1])
+    await expect(replayOutcome).resolves.toBeInstanceOf(
+      TaskFunctionTransactionError
+    )
+    expect(fixture.quarantined.map(item => item.handle.lease.id)).toStrictEqual(
+      [1]
+    )
     expect(vi.getTimerCount()).toBe(0)
   })
 })
