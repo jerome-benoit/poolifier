@@ -287,11 +287,13 @@ export const checkValidTasksQueueOptions = (
   }
 }
 
-export const checkWorkerNodeArguments = (
+export const checkWorkerNodeArguments: (
   type: undefined | WorkerType,
   filePath: string | undefined,
   opts: undefined | WorkerNodeOptions
-): void => {
+) => asserts opts is WorkerNodeOptions & {
+  tasksQueueBackPressureSize: number
+} = (type, filePath, opts) => {
   if (type == null) {
     throw new TypeError('Cannot construct a worker node without a worker type')
   }

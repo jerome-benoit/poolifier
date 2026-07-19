@@ -78,11 +78,11 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
       this.messageChannel = new MessageChannel()
     }
     const messageChannel = this.messageChannel
-    this.transportDrainBarrier = messageChannel != null
-      ? new TransportDrainBarrier(messageChannel.port1, 'close')
-      : new TransportDrainBarrier(this.worker, 'disconnect')
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    this.tasksQueueBackPressureSize = opts.tasksQueueBackPressureSize!
+    this.transportDrainBarrier =
+      messageChannel != null
+        ? new TransportDrainBarrier(messageChannel.port1, 'close')
+        : new TransportDrainBarrier(this.worker, 'disconnect')
+    this.tasksQueueBackPressureSize = opts.tasksQueueBackPressureSize
     this.tasksQueue = new PriorityQueue<Task<Data>>(
       opts.tasksQueueBucketSize,
       opts.tasksQueuePriority,
@@ -188,10 +188,18 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
     if (messageChannel == null) return
     let cleanupFailure: undefined | { readonly error: unknown }
     for (const cleanup of [
-      () => { messageChannel.port1.unref() },
-      () => { messageChannel.port2.unref() },
-      () => { messageChannel.port1.close() },
-      () => { messageChannel.port2.close() },
+      () => {
+        messageChannel.port1.unref()
+      },
+      () => {
+        messageChannel.port2.unref()
+      },
+      () => {
+        messageChannel.port1.close()
+      },
+      () => {
+        messageChannel.port2.close()
+      },
     ]) {
       try {
         cleanup()
