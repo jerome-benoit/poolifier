@@ -3,9 +3,6 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     coverage: {
-      // CJS files are generated from the same sources as ESM files and are
-      // smoke-tested by CJS import tests; coverage tracks the ESM build only.
-      include: ['lib/**/*.mjs'],
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       thresholds: {
