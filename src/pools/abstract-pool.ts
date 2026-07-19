@@ -1677,12 +1677,15 @@ export abstract class AbstractPool<
     ) {
       return
     }
-    const workerNodeKey = this.getWorkerNodeKeyByLease(responseLease)
     const responseHandle = this.getWorkerHandleByLease(responseLease)
+    const workerNodeKey =
+      responseHandle == null
+        ? -1
+        : this.getWorkerNodeKeyByHandle(responseHandle)
     const workerNode =
       workerNodeKey !== -1
         ? this.workerNodes[workerNodeKey]
-        : this.getWorkerHandleByLease(responseLease)?.worker
+        : responseHandle?.worker
     const settlement: TaskSettlement<Response> =
       workerError != null
         ? {
