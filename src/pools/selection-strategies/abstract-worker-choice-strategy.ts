@@ -12,7 +12,7 @@ import { DEFAULT_MEASUREMENT_STATISTICS_REQUIREMENTS } from '../utils.js'
 import {
   buildWorkerChoiceStrategyOptions,
   toggleMedianMeasurementStatisticsRequirements,
-} from './selection-strategies-helpers.js'
+} from './selection-strategies-utils.js'
 
 /**
  * Worker choice strategy abstract base class.
