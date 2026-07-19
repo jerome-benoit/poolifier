@@ -809,18 +809,14 @@ export abstract class AbstractPool<
   public hasTaskFunction (name: string): boolean {
     return this.taskFunctionStore.has(
       name,
-      this.workerNodes.map(
-        workerNode => workerNode.info.taskFunctionsProperties ?? []
-      )
+      this.workerNodesTaskFunctionsProperties()
     )
   }
 
   public listTaskFunctionsProperties (): TaskFunctionProperties[] {
     return [
       ...this.taskFunctionStore.listProperties(
-        this.workerNodes.map(
-          workerNode => workerNode.info.taskFunctionsProperties ?? []
-        )
+        this.workerNodesTaskFunctionsProperties()
       ),
     ]
   }
@@ -1554,9 +1550,7 @@ export abstract class AbstractPool<
   ): undefined | WorkerChoiceStrategy =>
     this.taskFunctionStore.strategy(
       name,
-      this.workerNodes.map(
-        workerNode => workerNode.info.taskFunctionsProperties ?? []
-      )
+      this.workerNodesTaskFunctionsProperties()
     )
 
   private readonly getTaskFunctionWorkerNodeKeysSet = (
@@ -1564,25 +1558,19 @@ export abstract class AbstractPool<
   ): ReadonlySet<number> | undefined =>
     this.taskFunctionStore.workerNodeKeys(
       name,
-      this.workerNodes.map(
-        workerNode => workerNode.info.taskFunctionsProperties ?? []
-      )
+      this.workerNodesTaskFunctionsProperties()
     )
 
   private getTasksQueuePriority (): boolean {
     return this.taskFunctionStore.usesPriority(
-      this.workerNodes.map(
-        workerNode => workerNode.info.taskFunctionsProperties ?? []
-      )
+      this.workerNodesTaskFunctionsProperties()
     )
   }
 
   private readonly getWorkerChoiceStrategies = (): Set<WorkerChoiceStrategy> =>
     this.taskFunctionStore.workerChoiceStrategies(
       this.opts.workerChoiceStrategy ?? WorkerChoiceStrategies.LEAST_USED,
-      this.workerNodes.map(
-        workerNode => workerNode.info.taskFunctionsProperties ?? []
-      )
+      this.workerNodesTaskFunctionsProperties()
     )
 
   private getWorkerHandleByLease (
@@ -2308,5 +2296,11 @@ export abstract class AbstractPool<
     taskName: string
   ): void {
     this.taskUsageAccounting.updateStolen(workerNodeKey, taskName)
+  }
+
+  private workerNodesTaskFunctionsProperties (): TaskFunctionProperties[][] {
+    return this.workerNodes.map(
+      workerNode => workerNode.info.taskFunctionsProperties ?? []
+    )
   }
 }
