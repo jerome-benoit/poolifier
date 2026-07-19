@@ -113,11 +113,21 @@ export class TaskScheduler<
       ) {
         return { kind: 'settled', taskId }
       }
-      const destination = candidates.at(0)
+      const destination = candidates.reduce<undefined | WorkerHandle<Worker>>(
+        (least, handle) =>
+          least == null ||
+          handle.worker.tasksQueueSize() < least.worker.tasksQueueSize()
+            ? handle
+            : least,
+        undefined
+      )
       if (destination == null) {
         return this.reject(taskId, noCandidateError(taskId))
       }
-      return this.settlePlacementRetry(taskId, this.placeOn(taskId, destination))
+      return this.settlePlacementRetry(
+        taskId,
+        this.placeOn(taskId, destination)
+      )
     })
   }
 
@@ -174,10 +184,7 @@ export class TaskScheduler<
     result: ScheduleResult<Worker>
   ): ScheduleResult<Worker> {
     return result.kind === 'retry'
-      ? this.reject(
-        taskId,
-        result.error ?? new Error('Task placement failed')
-      )
+      ? this.reject(taskId, result.error ?? new Error('Task placement failed'))
       : result
   }
 }
