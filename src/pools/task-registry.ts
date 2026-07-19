@@ -1,15 +1,19 @@
 import type { TaskUUID } from '../utility-types.js'
 import type {
-  AbortDecision, AccountingEffect,
-  DispatchPermit, ReconciliationReservation,
-  RegisterTaskInput, RegistryTransition,
-  SettlementResult, TaskRecord,
-  TaskSettlement, TaskState,
+  AbortDecision,
+  AccountingEffect,
+  DispatchPermit,
+  ReconciliationReservation,
+  RegisterTaskInput,
+  RegistryTransition,
+  SettlementResult,
+  TaskRecord,
+  TaskSettlement,
+  TaskState,
   WorkerLease,
 } from './lifecycle-types.js'
 
 import { DuplicateTaskError } from './duplicate-task-error.js'
-import { getTaskAbortDecision } from './task-abort-decision.js'
 import {
   hasActiveExecution,
   hasOwnedWork,
@@ -17,8 +21,15 @@ import {
   snapshotTasksByLease,
   waitingReadyTasks,
 } from './task-registry-queries.js'
-import { finalizeTaskSettlement, rollbackTaskRegistration } from './task-settlement-finalizer.js'
-import { decideTaskTransition, isActiveTaskState, sameWorkerLease } from './task-transition-decision.js'
+import {
+  finalizeTaskSettlement,
+  rollbackTaskRegistration,
+} from './task-settlement-finalizer.js'
+import {
+  decideTaskTransition,
+  isActiveTaskState,
+  sameWorkerLease,
+} from './task-transition-decision.js'
 
 const legalTransitions = {
   assigned: ['dispatching', 'queued', 'reconciling', 'settled'],
@@ -35,8 +46,45 @@ const legalTransitions = {
 
 type ReservableTaskState = ReconciliationReservation['previousState']
 
-const isReservableTaskState = (state: TaskState): state is ReservableTaskState =>
+const isReservableTaskState = (
+  state: TaskState
+): state is ReservableTaskState =>
   state !== 'reconciling' && state !== 'settled'
+
+const getTaskAbortDecision = <Data, Response>(
+  record: Readonly<TaskRecord<Data, Response>>,
+  taskId: TaskUUID
+): AbortDecision => {
+  switch (record.state) {
+    case 'assigned':
+    case 'detached':
+    case 'queued':
+    case 'registered':
+    case 'waitingReady':
+      return {
+        error:
+          record.abortSignal?.reason ??
+          new Error(
+            `Task '${record.task.name ?? 'default'}' id '${taskId}' aborted`
+          ),
+        kind: 'settle-local',
+        ...(record.currentLease != null && { lease: record.currentLease }),
+        state: record.state,
+      }
+    case 'cancelling':
+      return { kind: 'noop', reason: 'already_cancelling' }
+    case 'dispatching':
+      return { kind: 'defer-dispatch' }
+    case 'reconciling':
+      return { kind: 'noop', reason: 'reconciling' }
+    case 'running':
+      return record.currentLease == null
+        ? { kind: 'noop', reason: 'missing' }
+        : { kind: 'send-running-abort', lease: record.currentLease }
+    case 'settled':
+      return { kind: 'noop', reason: 'settled' }
+  }
+}
 
 export { DuplicateTaskError } from './duplicate-task-error.js'
 
@@ -80,8 +128,10 @@ export class TaskRegistry<Data = unknown, Response = unknown> {
 
   public register (input: RegisterTaskInput<Data, Response>): TaskUUID {
     const { task } = input
-    if (this.#records.has(task.taskId)) throw new DuplicateTaskError(task.taskId)
-    const abortListener = (): void => { input.onAbort(task.taskId) }
+    if (this.#records.has(task.taskId)) { throw new DuplicateTaskError(task.taskId) }
+    const abortListener = (): void => {
+      input.onAbort(task.taskId)
+    }
     const record: TaskRecord<Data, Response> = {
       abortListener: input.abortSignal != null ? abortListener : undefined,
       abortSignal: input.abortSignal,
@@ -94,7 +144,9 @@ export class TaskRegistry<Data = unknown, Response = unknown> {
     }
     this.#records.set(task.taskId, record)
     try {
-      input.abortSignal?.addEventListener('abort', abortListener, { once: true })
+      input.abortSignal?.addEventListener('abort', abortListener, {
+        once: true,
+      })
     } catch (error) {
       rollbackTaskRegistration(this.#records, record)
       throw error
@@ -170,7 +222,7 @@ export class TaskRegistry<Data = unknown, Response = unknown> {
     taskId: TaskUUID,
     settlement: TaskSettlement<Response>
   ): SettlementResult {
-    if (this.#records.get(taskId)?.state === 'reconciling') return { settled: false }
+    if (this.#records.get(taskId)?.state === 'reconciling') { return { settled: false } }
     return this.#settle(taskId, settlement)
   }
 
@@ -180,7 +232,10 @@ export class TaskRegistry<Data = unknown, Response = unknown> {
     lease: WorkerLease
   ): SettlementResult {
     const record = this.#records.get(taskId)
-    if (record?.state !== 'reconciling' || !sameWorkerLease(record.currentLease, lease)) return { settled: false }
+    if (
+      record?.state !== 'reconciling' ||
+      !sameWorkerLease(record.currentLease, lease)
+    ) { return { settled: false } }
     return this.#settle(taskId, settlement)
   }
 
@@ -240,7 +295,9 @@ export class TaskRegistry<Data = unknown, Response = unknown> {
   ): RegistryTransition {
     const record = this.#records.get(taskId)
     if (record == null) return { ok: false, reason: 'missing' }
-    if (record.state !== 'registered') { return { ok: false, reason: 'state_mismatch' } }
+    if (record.state !== 'registered') {
+      return { ok: false, reason: 'state_mismatch' }
+    }
     record.selectedLease ??= permit.handle.lease
     return this.transition(taskId, ['registered'], next, permit.handle.lease)
   }
