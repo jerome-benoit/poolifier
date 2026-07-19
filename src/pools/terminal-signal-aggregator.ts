@@ -1,18 +1,14 @@
 import type {
-  ReconcileClassification,
   ReconcileResult,
   WorkerExit,
+  WorkerTerminalObservation,
 } from './lifecycle-types.js'
 
-export type TerminalObservation = Readonly<{
-  cause: unknown
-  classification: Exclude<ReconcileClassification, 'draining'>
-  exit?: WorkerExit
-}>
-
 interface TerminalSignalCallbacks {
-  readonly quarantine: (observation: TerminalObservation) => void
-  readonly reconcile: (observation: TerminalObservation) => Promise<ReconcileResult>
+  readonly quarantine: (observation: WorkerTerminalObservation) => void
+  readonly reconcile: (
+    observation: WorkerTerminalObservation
+  ) => Promise<ReconcileResult>
   readonly waitForTransportDrain: () => Promise<void>
 }
 
@@ -59,7 +55,7 @@ export class TerminalSignalAggregator {
     return this.#reconciliation
   }
 
-  #snapshot (): TerminalObservation {
+  #snapshot (): WorkerTerminalObservation {
     return Object.freeze({
       cause: this.#error ?? this.#exitCause ?? this.#exit,
       classification:
