@@ -22,7 +22,7 @@ export class TaskSchedulerQueue<
       if (size === 0) break
       const taken = this.take(source, false, 'detached')
       if (taken.kind === 'task') taskIds.push(taken.taskId)
-      if (taken.kind === 'retry' || source.worker.tasksQueueSize() >= size) break
+      if (taken.kind === 'retry' || source.worker.tasksQueueSize() >= size) { break }
     }
     return taskIds
   }

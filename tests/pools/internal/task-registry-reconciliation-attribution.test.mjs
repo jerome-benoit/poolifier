@@ -42,8 +42,9 @@ describe('Task registry reconciliation attribution', () => {
     register(registry, ids.active, workerLease, 'running')
     registry.reserveForReconciliation([ids.active], workerLease)
 
-    expect(registry.snapshotActiveReconciliationTaskIds([ids.active], workerLease))
-      .toStrictEqual([ids.active])
+    expect(
+      registry.snapshotActiveReconciliationTaskIds([ids.active], workerLease)
+    ).toStrictEqual([ids.active])
   })
 
   it('does not re-reserve records already reconciling', () => {
@@ -65,9 +66,12 @@ describe('Task registry reconciliation attribution', () => {
     registry.reserveForReconciliation([ids.active], workerLease)
     registry.reserveForReconciliation([ids.foreign], foreignLease)
 
-    expect(registry.snapshotActiveReconciliationTaskIds(
-      [ids.foreign, ids.active], workerLease
-    )).toStrictEqual([ids.active])
+    expect(
+      registry.snapshotActiveReconciliationTaskIds(
+        [ids.foreign, ids.active],
+        workerLease
+      )
+    ).toStrictEqual([ids.active])
   })
 
   it('filters a stale worker generation', () => {
@@ -77,9 +81,12 @@ describe('Task registry reconciliation attribution', () => {
     registry.reserveForReconciliation([ids.active], workerLease)
     registry.reserveForReconciliation([ids.stale], staleLease)
 
-    expect(registry.snapshotActiveReconciliationTaskIds(
-      [ids.stale, ids.active], workerLease
-    )).toStrictEqual([ids.active])
+    expect(
+      registry.snapshotActiveReconciliationTaskIds(
+        [ids.stale, ids.active],
+        workerLease
+      )
+    ).toStrictEqual([ids.active])
   })
 
   it('keeps queued reconciling records inactive', () => {
@@ -88,9 +95,12 @@ describe('Task registry reconciliation attribution', () => {
     register(registry, ids.queued, workerLease, 'queued')
     registry.reserveForReconciliation([ids.active, ids.queued], workerLease)
 
-    expect(registry.snapshotActiveReconciliationTaskIds(
-      [ids.queued, ids.active], workerLease
-    )).toStrictEqual([ids.active])
+    expect(
+      registry.snapshotActiveReconciliationTaskIds(
+        [ids.queued, ids.active],
+        workerLease
+      )
+    ).toStrictEqual([ids.active])
   })
 
   it('preserves stable unique input order', () => {
@@ -99,9 +109,12 @@ describe('Task registry reconciliation attribution', () => {
     register(registry, ids.foreign, workerLease, 'cancelling')
     registry.reserveForReconciliation([ids.active, ids.foreign], workerLease)
 
-    expect(registry.snapshotActiveReconciliationTaskIds(
-      [ids.foreign, ids.active, ids.foreign], workerLease
-    )).toStrictEqual([ids.foreign, ids.active])
+    expect(
+      registry.snapshotActiveReconciliationTaskIds(
+        [ids.foreign, ids.active, ids.foreign],
+        workerLease
+      )
+    ).toStrictEqual([ids.foreign, ids.active])
   })
 
   it('returns task IDs without exposing records', () => {
@@ -110,7 +123,8 @@ describe('Task registry reconciliation attribution', () => {
     registry.reserveForReconciliation([ids.active], workerLease)
 
     const snapshot = registry.snapshotActiveReconciliationTaskIds(
-      [ids.active], workerLease
+      [ids.active],
+      workerLease
     )
 
     expect(snapshot).toStrictEqual([ids.active])

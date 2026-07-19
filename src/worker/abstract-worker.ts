@@ -86,7 +86,10 @@ export abstract class AbstractWorker<
    */
   protected taskAbortFunctions: Map<TaskUUID, () => void>
 
-  protected get taskFunctions (): Map<string, TaskFunctionObject<Data, Response>> {
+  protected get taskFunctions (): Map<
+    string,
+    TaskFunctionObject<Data, Response>
+  > {
     return this.taskFunctionLayers
   }
 
@@ -539,7 +542,7 @@ export abstract class AbstractWorker<
       const fnObj = { taskFunction: taskFunctions.bind(this) }
       defaultTaskFunctionName =
         typeof taskFunctions.name === 'string' &&
-          taskFunctions.name.trim().length > 0
+        taskFunctions.name.trim().length > 0
           ? taskFunctions.name
           : 'fn1'
       staticTaskFunctions.set(defaultTaskFunctionName, fnObj)

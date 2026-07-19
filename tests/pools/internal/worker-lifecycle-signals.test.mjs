@@ -195,11 +195,7 @@ describe('Worker lifecycle signals', () => {
   })
 
   it('refreshes owned work when constructing later reconciliation transitions', async () => {
-    const snapshots = [
-      ['initial-task'],
-      ['remaining-task'],
-      [],
-    ]
+    const snapshots = [['initial-task'], ['remaining-task'], []]
     const complete = vi.fn()
     const reconcile = vi.fn()
     const coordinator = new WorkerLifecycleCoordinator({

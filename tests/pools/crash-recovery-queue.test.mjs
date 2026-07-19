@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { FixedThreadPool, PoolEvents, WorkerCrashError } from '../../lib/index.mjs'
+import {
+  FixedThreadPool,
+  PoolEvents,
+  WorkerCrashError,
+} from '../../lib/index.mjs'
 import { createCrashRecoveryTestContext } from './crash-recovery-test-support.mjs'
 
 describe('Crash recovery regression test suite', () => {
@@ -90,16 +94,14 @@ describe('Crash recovery regression test suite', () => {
     retry: 0,
     timeout: 10_000,
   }, async () => {
-    const pool = trackPool(new FixedThreadPool(
-      1,
-      './tests/worker-files/thread/crashWorker.mjs',
-      {
+    const pool = trackPool(
+      new FixedThreadPool(1, './tests/worker-files/thread/crashWorker.mjs', {
         enableTasksQueue: true,
         errorHandler: () => undefined,
         restartWorkerOnError: false,
         tasksQueueOptions: { concurrency: 1 },
-      }
-    ))
+      })
+    )
     if (!pool.info.ready) {
       await new Promise(resolve => {
         pool.emitter.once(PoolEvents.ready, resolve)
@@ -126,7 +128,9 @@ describe('Crash recovery regression test suite', () => {
 
     expect(poolErrors).toHaveLength(1)
     expect(activeError).toBeInstanceOf(WorkerCrashError)
-    expect(activeError.message).toBe('Worker node crashed: Simulated worker crash')
+    expect(activeError.message).toBe(
+      'Worker node crashed: Simulated worker crash'
+    )
     expect(activeError.cause).toBe(poolError.cause)
     expect(activeError.cause).toBeInstanceOf(Error)
     expect(activeError.cause.message).toBe('Simulated worker crash')
@@ -150,7 +154,9 @@ describe('Crash recovery regression test suite', () => {
     expect(poolError).toBeInstanceOf(WorkerCrashError)
     expect(poolError).not.toBe(activeError)
     expect(poolError).not.toBe(queuedError)
-    expect(poolError.message).toBe('Worker node crashed: Simulated worker crash')
+    expect(poolError.message).toBe(
+      'Worker node crashed: Simulated worker crash'
+    )
     expect(poolError.taskId).toBeUndefined()
     expect(poolError.workerId).toBe(workerId)
     expect(poolError.exitCode).toBe(1)

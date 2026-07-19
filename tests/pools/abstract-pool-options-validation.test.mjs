@@ -1,4 +1,10 @@
-import { describe, expect, FixedThreadPool, it, numberOfWorkers } from './abstract-pool-test-support.mjs'
+import {
+  describe,
+  expect,
+  FixedThreadPool,
+  it,
+  numberOfWorkers,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that pool options are validated', () => {

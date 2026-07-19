@@ -1,10 +1,10 @@
 import type { TaskUUID } from '../utility-types.js'
-import type {
-  TaskRecord,
-  WorkerLease,
-} from './lifecycle-types.js'
+import type { TaskRecord, WorkerLease } from './lifecycle-types.js'
 
-import { isOwnedWorkState, sameWorkerLease } from './task-transition-decision.js'
+import {
+  isOwnedWorkState,
+  sameWorkerLease,
+} from './task-transition-decision.js'
 
 const hasTaskByLease = <Data, Response>(
   records: ReadonlyMap<TaskUUID, TaskRecord<Data, Response>>,
@@ -22,46 +22,60 @@ const hasTaskByLease = <Data, Response>(
 export const hasActiveExecution = <Data, Response>(
   records: ReadonlyMap<TaskUUID, TaskRecord<Data, Response>>,
   lease: WorkerLease
-): boolean => hasTaskByLease(
-    records,
-    lease,
-    record => record.state === 'dispatching' || record.state === 'running' ||
+): boolean =>
+    hasTaskByLease(
+      records,
+      lease,
+      record =>
+        record.state === 'dispatching' ||
+      record.state === 'running' ||
       record.state === 'cancelling'
-  )
+    )
 
 export const hasOwnedWork = <Data, Response>(
   records: ReadonlyMap<TaskUUID, TaskRecord<Data, Response>>,
   lease: WorkerLease
 ): boolean => {
-  return hasTaskByLease(records, lease, record => isOwnedWorkState(record.state))
+  return hasTaskByLease(records, lease, record =>
+    isOwnedWorkState(record.state)
+  )
 }
 
 export const snapshotTasksByLease = <Data, Response>(
   records: ReadonlyMap<TaskUUID, TaskRecord<Data, Response>>,
   lease: WorkerLease
-): readonly TaskUUID[] => [...records]
-    .filter(([, record]) =>
-      sameWorkerLease(record.currentLease, lease) ||
-      ((record.state === 'registered' || record.state === 'detached') &&
-        sameWorkerLease(record.selectedLease, lease))
-    )
-    .map(([taskId]) => taskId)
+): readonly TaskUUID[] =>
+    [...records]
+      .filter(
+        ([, record]) =>
+          sameWorkerLease(record.currentLease, lease) ||
+        ((record.state === 'registered' || record.state === 'detached') &&
+          sameWorkerLease(record.selectedLease, lease))
+      )
+      .map(([taskId]) => taskId)
 
 export const snapshotActiveReconciliationTaskIds = <Data, Response>(
   records: ReadonlyMap<TaskUUID, TaskRecord<Data, Response>>,
   taskIds: readonly TaskUUID[],
   lease: WorkerLease
-): readonly TaskUUID[] => [...new Set(taskIds)].filter(taskId => {
-    const record = records.get(taskId)
-    return record?.state === 'reconciling' &&
+): readonly TaskUUID[] =>
+    [...new Set(taskIds)].filter(taskId => {
+      const record = records.get(taskId)
+      return (
+        record?.state === 'reconciling' &&
       record.activeOnReconciliation === true &&
       sameWorkerLease(record.currentLease, lease)
-  })
+      )
+    })
 
 export const waitingReadyTasks = <Data, Response>(
   records: ReadonlyMap<TaskUUID, TaskRecord<Data, Response>>,
   lease: WorkerLease
-): readonly TaskUUID[] => [...records]
-    .filter(([, record]) => record.state === 'waitingReady' &&
-      sameWorkerLease(record.currentLease, lease))
-    .map(([taskId]) => taskId)
+): readonly TaskUUID[] =>
+    [...records]
+      .filter(
+        ([, record]) =>
+          record.state === 'waitingReady' &&
+        sameWorkerLease(record.currentLease, lease)
+      )
+      .map(([taskId]) => taskId)

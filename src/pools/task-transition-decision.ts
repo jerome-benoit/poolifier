@@ -1,8 +1,4 @@
-import type {
-  TaskRecord,
-  TaskState,
-  WorkerLease,
-} from './lifecycle-types.js'
+import type { TaskRecord, TaskState, WorkerLease } from './lifecycle-types.js'
 
 export type TaskTransitionDecision =
   | Readonly<{
@@ -25,15 +21,24 @@ export const decideTaskTransition = <Data, Response>(
   lease?: WorkerLease
 ): TaskTransitionDecision => {
   const currentLease = record.currentLease ?? lease
-  const requiresLease = next === 'assigned' || next === 'cancelling' ||
-    next === 'dispatching' || next === 'queued' || next === 'reconciling' ||
+  const requiresLease =
+    next === 'assigned' ||
+    next === 'cancelling' ||
+    next === 'dispatching' ||
+    next === 'queued' ||
+    next === 'reconciling' ||
     next === 'running'
-  if (record.state === 'settled' || !expected.includes(record.state) ||
+  if (
+    record.state === 'settled' ||
+    !expected.includes(record.state) ||
     !legalNextStates.some(state => state === next) ||
-    (record.currentLease != null && lease != null &&
-      !sameWorkerLease(record.currentLease, lease)) || next === 'settled' ||
+    (record.currentLease != null &&
+      lease != null &&
+      !sameWorkerLease(record.currentLease, lease)) ||
+    next === 'settled' ||
     (requiresLease && currentLease == null) ||
-    (next === 'detached' && lease != null)) return { ok: false }
+    (next === 'detached' && lease != null)
+  ) { return { ok: false } }
   return { currentLease, ok: true, previous: record.state }
 }
 
@@ -41,6 +46,9 @@ export const isActiveTaskState = (state: TaskState): boolean =>
   state === 'dispatching' || state === 'running' || state === 'cancelling'
 
 export const isOwnedWorkState = (state: TaskState): boolean =>
-  state === 'waitingReady' || state === 'assigned' ||
-  state === 'dispatching' || state === 'queued' || state === 'running' ||
+  state === 'waitingReady' ||
+  state === 'assigned' ||
+  state === 'dispatching' ||
+  state === 'queued' ||
+  state === 'running' ||
   state === 'cancelling'

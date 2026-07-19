@@ -15,7 +15,9 @@ channel.onmessage = ({ data }) => {
     if (data.action === 'ack') worker.completeOperation(operation)
     if (data.action === 'ack-crash') {
       worker.completeOperation(operation)
-      setImmediate(() => { throw new Error('crash after ACK') })
+      setImmediate(() => {
+        throw new Error('crash after ACK')
+      })
     }
     if (data.action === 'nack') worker.rejectOperation(operation)
   }
@@ -27,7 +29,9 @@ channel.onmessage = ({ data }) => {
   // eslint-disable-next-line n/no-process-exit
   if (data.action === 'crash-task') process.exit(2)
   if (data.action === 'crash-task-error') {
-    setImmediate(() => { throw new Error(data.message) })
+    setImmediate(() => {
+      throw new Error(data.message)
+    })
   }
 }
 
@@ -35,7 +39,9 @@ const execute = data => {
   channel.postMessage({ event: 'dispatch', id: worker.id, ...data })
   switch (data.action) {
     case 'error-exit':
-      queueMicrotask(() => { throw new Error('thread error then exit') })
+      queueMicrotask(() => {
+        throw new Error('thread error then exit')
+      })
       return new Promise(() => {})
     case 'reply-exit':
       // eslint-disable-next-line n/no-process-exit
@@ -80,11 +86,14 @@ class CrashRecoveryMatrixWorker extends ThreadWorker {
   }
 }
 
-const worker = new CrashRecoveryMatrixWorker({
-  execute,
-  matrixTarget: execute,
-}, {
-  killBehavior: KillBehaviors.HARD,
-  maxInactiveTime: 500,
-})
+const worker = new CrashRecoveryMatrixWorker(
+  {
+    execute,
+    matrixTarget: execute,
+  },
+  {
+    killBehavior: KillBehaviors.HARD,
+    maxInactiveTime: 500,
+  }
+)
 channel.postMessage({ event: 'online', id: worker.id })

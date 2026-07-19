@@ -14,21 +14,25 @@ it('finalizes once after every residual rejection attempt fails', async () => {
   const reject = vi.fn(() => {
     throw new Error('reject failed')
   })
-  const recovery = new WorkerTaskRecovery({
-    classification: 'faulted',
-    handle: { lease, worker: { info: { dynamic: false } } },
-    ownedTaskIds: reservations.map(({ taskId }) => taskId),
-    previousState: 'ready',
-  }, reservations, {
-    apply: vi.fn(),
-    error: () => new Error('crash'),
-    finalize,
-    prepare: () => Promise.resolve(),
-    reject,
-    restore: () => {
-      throw new Error('restore failed')
+  const recovery = new WorkerTaskRecovery(
+    {
+      classification: 'faulted',
+      handle: { lease, worker: { info: { dynamic: false } } },
+      ownedTaskIds: reservations.map(({ taskId }) => taskId),
+      previousState: 'ready',
     },
-  })
+    reservations,
+    {
+      apply: vi.fn(),
+      error: () => new Error('crash'),
+      finalize,
+      prepare: () => Promise.resolve(),
+      reject,
+      restore: () => {
+        throw new Error('restore failed')
+      },
+    }
+  )
   await recovery.prepare(signal)
 
   expect(() => recovery.restore(signal)).toThrow('restore failed')

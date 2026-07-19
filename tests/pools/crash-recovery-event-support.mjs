@@ -2,7 +2,8 @@ import { expect } from 'vitest'
 
 import { PoolEvents, WorkerCrashError } from '../../lib/index.mjs'
 
-const once = (pool, event) => new Promise(resolve => pool.emitter.once(event, resolve))
+const once = (pool, event) =>
+  new Promise(resolve => pool.emitter.once(event, resolve))
 
 export const verifyBusyStateAfterCrash = async start => {
   const { inbox, pool } = await start()
@@ -22,7 +23,9 @@ export const verifyBusyStateAfterCrash = async start => {
   expect(busyEndEvents).toHaveLength(1)
 
   const nextBusyEnd = once(pool, PoolEvents.busyEnd)
-  await expect(pool.execute({ action: 'echo' })).resolves.toMatchObject({ action: 'echo' })
+  await expect(pool.execute({ action: 'echo' })).resolves.toMatchObject({
+    action: 'echo',
+  })
   await nextBusyEnd
   expect(busyEvents).toHaveLength(2)
   expect(busyEndEvents).toHaveLength(2)
@@ -32,7 +35,9 @@ export const verifyBusyStateAfterCrash = async start => {
   pool.start()
   await restarted
   const restartedBusyEnd = once(pool, PoolEvents.busyEnd)
-  await expect(pool.execute({ action: 'echo' })).resolves.toMatchObject({ action: 'echo' })
+  await expect(pool.execute({ action: 'echo' })).resolves.toMatchObject({
+    action: 'echo',
+  })
   await restartedBusyEnd
   expect(busyEvents).toHaveLength(3)
   expect(busyEndEvents).toHaveLength(3)

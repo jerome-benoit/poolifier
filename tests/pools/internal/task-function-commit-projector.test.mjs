@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest'
 
 import { TaskFunctionCommitProjector } from '../../../lib/pools/task-function-commit-projector.mjs'
 
-const snapshot = (revision, names) => Object.freeze({
-  defaultName: '__default__',
-  entries: Object.freeze(names.map(name => Object.freeze({ name }))),
-  revision,
-})
+const snapshot = (revision, names) =>
+  Object.freeze({
+    defaultName: '__default__',
+    entries: Object.freeze(names.map(name => Object.freeze({ name }))),
+    revision,
+  })
 
 describe('TaskFunctionCommitProjector', () => {
   it('attempts deterministic projections after each earlier projection failure', () => {
@@ -68,8 +69,12 @@ describe('TaskFunctionCommitProjector', () => {
         reported.push(error)
         throw reportingError
       },
-      sendStatistics: workerNodeKey => { calls.push(`statistics:${workerNodeKey}`) },
-      synchronizeStrategies: () => { calls.push('strategies') },
+      sendStatistics: workerNodeKey => {
+        calls.push(`statistics:${workerNodeKey}`)
+      },
+      synchronizeStrategies: () => {
+        calls.push('strategies')
+      },
       workerNodeKeys: () => [0],
     })
 

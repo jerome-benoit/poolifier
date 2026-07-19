@@ -37,23 +37,26 @@ export const createCrashRecoveryThreadTransport = trackPool => {
     }
   }
 
-  const once = (pool, event) => new Promise(resolve => pool.emitter.once(event, resolve))
+  const once = (pool, event) =>
+    new Promise(resolve => pool.emitter.once(event, resolve))
 
   const start = async (options = {}) => {
     const inbox = createInbox()
     const { size = 1, ...poolOptions } = options
-    const pool = trackPool(new CrashRecoveryThreadPool(size, workerFile, {
-      errorHandler: () => undefined,
-      ...poolOptions,
-      workerOptions: {
-        ...poolOptions.workerOptions,
-        env: {
-          ...process.env,
-          ...poolOptions.workerOptions?.env,
-          CRASH_RECOVERY_CHANNEL: inbox.name,
+    const pool = trackPool(
+      new CrashRecoveryThreadPool(size, workerFile, {
+        errorHandler: () => undefined,
+        ...poolOptions,
+        workerOptions: {
+          ...poolOptions.workerOptions,
+          env: {
+            ...process.env,
+            ...poolOptions.workerOptions?.env,
+            CRASH_RECOVERY_CHANNEL: inbox.name,
+          },
         },
-      },
-    }))
+      })
+    )
     if (!pool.info.ready) await once(pool, PoolEvents.ready)
     return { inbox, pool }
   }

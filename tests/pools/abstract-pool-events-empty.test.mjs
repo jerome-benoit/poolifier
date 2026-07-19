@@ -1,4 +1,16 @@
-import { describe, DynamicClusterPool, expect, it, numberOfWorkers, PoolEvents, PoolTypes, version, waitPoolEvents, WorkerChoiceStrategies, WorkerTypes } from './abstract-pool-test-support.mjs'
+import {
+  describe,
+  DynamicClusterPool,
+  expect,
+  it,
+  numberOfWorkers,
+  PoolEvents,
+  PoolTypes,
+  version,
+  waitPoolEvents,
+  WorkerChoiceStrategies,
+  WorkerTypes,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it("Verify that pool event emitter 'empty' event can register a callback", async () => {

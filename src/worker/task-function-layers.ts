@@ -3,8 +3,10 @@ import type { TaskFunctionObject } from './task-functions.js'
 
 import { buildTaskFunctionProperties, DEFAULT_TASK_NAME } from '../utils.js'
 
-export class TaskFunctionLayers<Data = unknown, Response = unknown>
-  extends Map<string, TaskFunctionObject<Data, Response>> {
+export class TaskFunctionLayers<Data = unknown, Response = unknown> extends Map<
+  string,
+  TaskFunctionObject<Data, Response>
+> {
   public get defaultName (): string {
     return this.#defaultName
   }
@@ -17,10 +19,7 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown>
   readonly #overlay = new Map<string, TaskFunctionObject<Data, Response>>()
 
   public constructor (
-    staticTaskFunctions: Map<
-      string,
-      TaskFunctionObject<Data, Response>
-    >,
+    staticTaskFunctions: Map<string, TaskFunctionObject<Data, Response>>,
     defaultName: string
   ) {
     super()
@@ -50,10 +49,9 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown>
     return existed
   }
 
-  public override entries (): MapIterator<[
-    string,
-    TaskFunctionObject<Data, Response>
-  ]> {
+  public override entries (): MapIterator<
+    [string, TaskFunctionObject<Data, Response>]
+  > {
     return this.effectiveEntries()[Symbol.iterator]()
   }
 
@@ -74,8 +72,7 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown>
     name: string
   ): TaskFunctionObject<Data, Response> | undefined {
     const effectiveName = name === DEFAULT_TASK_NAME ? this.#defaultName : name
-    return this.#overlay.get(effectiveName) ??
-      super.get(effectiveName)
+    return this.#overlay.get(effectiveName) ?? super.get(effectiveName)
   }
 
   public override has (name: string): boolean {
@@ -95,8 +92,8 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown>
         ? [buildTaskFunctionProperties(this.#defaultName, defaultTaskFunction)]
         : []),
       ...[...this]
-        .filter(([name]) =>
-          name !== DEFAULT_TASK_NAME && name !== this.#defaultName
+        .filter(
+          ([name]) => name !== DEFAULT_TASK_NAME && name !== this.#defaultName
         )
         .map(([name, taskFunction]) =>
           buildTaskFunctionProperties(name, taskFunction)
@@ -113,8 +110,8 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown>
         ? [buildTaskFunctionProperties(this.#defaultName, defaultTaskFunction)]
         : []),
       ...[...super.entries()]
-        .filter(([name]) =>
-          name !== DEFAULT_TASK_NAME && name !== this.#defaultName
+        .filter(
+          ([name]) => name !== DEFAULT_TASK_NAME && name !== this.#defaultName
         )
         .map(([name, taskFunction]) =>
           buildTaskFunctionProperties(name, taskFunction)
@@ -140,7 +137,10 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown>
     name: string,
     taskFunction: TaskFunctionObject<Data, Response>
   ): this {
-    super.set(name === DEFAULT_TASK_NAME ? this.#defaultName : name, taskFunction)
+    super.set(
+      name === DEFAULT_TASK_NAME ? this.#defaultName : name,
+      taskFunction
+    )
     return this
   }
 
@@ -150,10 +150,9 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown>
     return true
   }
 
-  public override [Symbol.iterator] (): MapIterator<[
-    string,
-    TaskFunctionObject<Data, Response>
-  ]> {
+  public override [Symbol.iterator] (): MapIterator<
+    [string, TaskFunctionObject<Data, Response>]
+  > {
     return this.entries()
   }
 
@@ -161,10 +160,9 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown>
     return this.effectiveValues()
   }
 
-  private * effectiveEntries (): MapIterator<[
-    string,
-    TaskFunctionObject<Data, Response>
-  ]> {
+  private * effectiveEntries (): MapIterator<
+    [string, TaskFunctionObject<Data, Response>]
+  > {
     const defaultTaskFunction = this.get(DEFAULT_TASK_NAME)
     if (defaultTaskFunction != null) {
       yield [DEFAULT_TASK_NAME, defaultTaskFunction]
@@ -181,9 +179,7 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown>
     for (const [name] of this.effectiveEntries()) yield name
   }
 
-  private * effectiveValues (): MapIterator<
-    TaskFunctionObject<Data, Response>
-  > {
+  private * effectiveValues (): MapIterator<TaskFunctionObject<Data, Response>> {
     for (const [, taskFunction] of this.effectiveEntries()) yield taskFunction
   }
 }

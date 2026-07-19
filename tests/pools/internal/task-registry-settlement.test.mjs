@@ -5,9 +5,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { TaskRegistry } from '../../../lib/pools/task-registry.mjs'
 import { registerTask, selectedLease } from './task-registry-fixture.mjs'
 
-const registrationFixture = (
-  abortSignal = new AbortController().signal
-) => {
+const registrationFixture = (abortSignal = new AbortController().signal) => {
   const asyncResource = new AsyncResource('task-registry-registration-test', {
     requireManualDestroy: true,
   })
@@ -91,26 +89,26 @@ describe('Task registry settlement', () => {
     expect(fixture.reject).toHaveBeenCalledWith(reason)
   })
 
-  it.each([
-    new Error('pre-aborted'),
-    null,
-  ])('synchronously requests a pre-aborted task without settling it', reason => {
-    const controller = new AbortController()
-    controller.abort(reason)
-    const fixture = registerTask({ abortSignal: controller.signal })
+  it.each([new Error('pre-aborted'), null])(
+    'synchronously requests a pre-aborted task without settling it',
+    reason => {
+      const controller = new AbortController()
+      controller.abort(reason)
+      const fixture = registerTask({ abortSignal: controller.signal })
 
-    expect(fixture.onAbort).not.toHaveBeenCalled()
-    expect(fixture.registry.size).toBe(1)
-    const decision = fixture.registry.requestAbort(fixture.taskId)
-    expect(decision.kind).toBe('settle-local')
-    if (reason != null) {
-      expect(decision.error).toBe(reason)
-    } else {
-      expect(decision.error).toStrictEqual(
-        new Error(`Task 'echo' id '${fixture.taskId}' aborted`)
-      )
+      expect(fixture.onAbort).not.toHaveBeenCalled()
+      expect(fixture.registry.size).toBe(1)
+      const decision = fixture.registry.requestAbort(fixture.taskId)
+      expect(decision.kind).toBe('settle-local')
+      if (reason != null) {
+        expect(decision.error).toBe(reason)
+      } else {
+        expect(decision.error).toStrictEqual(
+          new Error(`Task 'echo' id '${fixture.taskId}' aborted`)
+        )
+      }
     }
-  })
+  )
 
   it('uses the exact fallback for an undefined pre-abort reason', () => {
     const signal = {

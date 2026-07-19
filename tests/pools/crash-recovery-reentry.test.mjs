@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { FixedThreadPool, PoolEvents, WorkerCrashError } from '../../lib/index.mjs'
+import {
+  FixedThreadPool,
+  PoolEvents,
+  WorkerCrashError,
+} from '../../lib/index.mjs'
 import { createCrashRecoveryTestContext } from './crash-recovery-test-support.mjs'
 
 describe('Crash recovery regression test suite', () => {

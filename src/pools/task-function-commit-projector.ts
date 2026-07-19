@@ -14,7 +14,10 @@ export interface TaskFunctionCommitProjectionCallbacks<Data, Response> {
 
 export class TaskFunctionCommitProjector<Data = unknown, Response = unknown> {
   public constructor (
-    private readonly callbacks: TaskFunctionCommitProjectionCallbacks<Data, Response>
+    private readonly callbacks: TaskFunctionCommitProjectionCallbacks<
+      Data,
+      Response
+    >
   ) {}
 
   public project (

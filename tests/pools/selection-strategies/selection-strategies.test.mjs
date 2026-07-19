@@ -393,8 +393,9 @@ describe('Selection strategies test suite', () => {
     await pool.execute()
     pool.setWorkerChoiceStrategy(workerChoiceStrategy)
     await pool.execute()
-    expect(pool.workerNodes.map(workerNode => workerNode.usage.tasks.executed).sort())
-      .toStrictEqual([0, 1, 1])
+    expect(
+      pool.workerNodes.map(workerNode => workerNode.usage.tasks.executed).sort()
+    ).toStrictEqual([0, 1, 1])
     await pool.destroy()
     pool = new DynamicThreadPool(
       2,
@@ -406,8 +407,9 @@ describe('Selection strategies test suite', () => {
     await pool.execute()
     pool.setWorkerChoiceStrategy(workerChoiceStrategy)
     await pool.execute()
-    expect(pool.workerNodes.map(workerNode => workerNode.usage.tasks.executed))
-      .toStrictEqual([1, 1])
+    expect(
+      pool.workerNodes.map(workerNode => workerNode.usage.tasks.executed)
+    ).toStrictEqual([1, 1])
     // We need to clean up the resources after our test
     await pool.destroy()
   })

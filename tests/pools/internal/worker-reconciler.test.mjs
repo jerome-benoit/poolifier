@@ -42,12 +42,15 @@ describe('WorkerReconciler bounded fallbacks', () => {
     const taskOutcome = task.promise.catch(reason => reason)
     const recovery = {
       finalizeResidual: vi.fn(),
-      prepare: vi.fn(() => new Promise(resolve => {
-        setTimeout(() => {
-          task.reject(new Error('tasks finished timeout'))
-          resolve(undefined)
-        }, 40_000)
-      })),
+      prepare: vi.fn(
+        () =>
+          new Promise(resolve => {
+            setTimeout(() => {
+              task.reject(new Error('tasks finished timeout'))
+              resolve(undefined)
+            }, 40_000)
+          })
+      ),
       prepareTimeoutMs: 40_000,
       restore: vi.fn(),
     }
@@ -64,12 +67,20 @@ describe('WorkerReconciler bounded fallbacks', () => {
       terminate: vi.fn(),
     }
     const fixture = createInput(callbacks)
-    const reconciliation = new WorkerReconciler(callbacks).reconcile(fixture.input)
+    const reconciliation = new WorkerReconciler(callbacks).reconcile(
+      fixture.input
+    )
     let settled = false
     reconciliation
       .then(
-        () => { settled = true; return undefined },
-        () => { settled = true; return undefined }
+        () => {
+          settled = true
+          return undefined
+        },
+        () => {
+          settled = true
+          return undefined
+        }
       )
       .catch(() => undefined)
     setTimeout(() => task.resolve('completed'), 50_000)
@@ -97,9 +108,12 @@ describe('WorkerReconciler bounded fallbacks', () => {
       vi.useFakeTimers()
       const recovery = {
         finalizeResidual: vi.fn(),
-        prepare: vi.fn(() => new Promise(resolve => {
-          setTimeout(resolve, tasksFinishedTimeout)
-        })),
+        prepare: vi.fn(
+          () =>
+            new Promise(resolve => {
+              setTimeout(resolve, tasksFinishedTimeout)
+            })
+        ),
         prepareTimeoutMs: tasksFinishedTimeout,
         restore: vi.fn(),
       }
@@ -142,94 +156,97 @@ describe('WorkerReconciler bounded fallbacks', () => {
     'drain',
     'finalizeResidual',
     'finalize',
-  ])('attempts every phase and finalizes when %s never resolves', async stage => {
-    vi.useFakeTimers()
-    const calls = []
-    const recovery = {
-      finalizeResidual: vi.fn(() => {
-        calls.push('finalizeResidual')
-        return stage === 'finalizeResidual' ? never() : undefined
-      }),
-      prepare: vi.fn(() => {
-        return Promise.resolve(undefined)
-      }),
-      restore: vi.fn(() => {
-        calls.push('restore')
-        return stage === 'restore' ? never() : undefined
-      }),
-    }
-    const callbacks = {
-      complete: vi.fn(async () => {
-        calls.push('complete')
-        if (stage === 'complete') await never()
-      }),
-      drain: vi.fn(async () => {
-        calls.push('drain')
-        if (stage === 'drain') await never()
-      }),
-      exclude: vi.fn(() => {
-        calls.push('exclude')
-        if (stage === 'exclude') return never()
-      }),
-      isPoolRunning: vi.fn(() => {
-        calls.push('isPoolRunning')
-        return stage === 'isPoolRunning' ? never() : true
-      }),
-      reconcile: vi.fn(() => {
-        calls.push('prepare')
-        return stage === 'prepare' ? never() : recovery
-      }),
-      remove: vi.fn(() => {
-        calls.push('remove')
-        if (stage === 'remove') return never()
-      }),
-      replace: vi.fn(async () => {
-        calls.push('replace')
-        if (stage === 'replace') await never()
-      }),
-      shouldReplace: vi.fn(() => {
-        calls.push('shouldReplace')
-        return stage === 'shouldReplace' ? never() : true
-      }),
-      snapshotOwnedWork: vi.fn(() => []),
-      terminate: vi.fn(async () => {
-        calls.push('terminate')
-        if (stage === 'terminate') await never()
-      }),
-    }
-    const finalize = vi.fn(() => {
-      calls.push('finalize')
-      return stage === 'finalize' ? never() : undefined
-    })
-    const fixture = createInput(callbacks, finalize)
-    const reconciliation = new WorkerReconciler(callbacks, 10)
-      .reconcile(fixture.input)
-      .catch(reason => reason)
+  ])(
+    'attempts every phase and finalizes when %s never resolves',
+    async stage => {
+      vi.useFakeTimers()
+      const calls = []
+      const recovery = {
+        finalizeResidual: vi.fn(() => {
+          calls.push('finalizeResidual')
+          return stage === 'finalizeResidual' ? never() : undefined
+        }),
+        prepare: vi.fn(() => {
+          return Promise.resolve(undefined)
+        }),
+        restore: vi.fn(() => {
+          calls.push('restore')
+          return stage === 'restore' ? never() : undefined
+        }),
+      }
+      const callbacks = {
+        complete: vi.fn(async () => {
+          calls.push('complete')
+          if (stage === 'complete') await never()
+        }),
+        drain: vi.fn(async () => {
+          calls.push('drain')
+          if (stage === 'drain') await never()
+        }),
+        exclude: vi.fn(() => {
+          calls.push('exclude')
+          if (stage === 'exclude') return never()
+        }),
+        isPoolRunning: vi.fn(() => {
+          calls.push('isPoolRunning')
+          return stage === 'isPoolRunning' ? never() : true
+        }),
+        reconcile: vi.fn(() => {
+          calls.push('prepare')
+          return stage === 'prepare' ? never() : recovery
+        }),
+        remove: vi.fn(() => {
+          calls.push('remove')
+          if (stage === 'remove') return never()
+        }),
+        replace: vi.fn(async () => {
+          calls.push('replace')
+          if (stage === 'replace') await never()
+        }),
+        shouldReplace: vi.fn(() => {
+          calls.push('shouldReplace')
+          return stage === 'shouldReplace' ? never() : true
+        }),
+        snapshotOwnedWork: vi.fn(() => []),
+        terminate: vi.fn(async () => {
+          calls.push('terminate')
+          if (stage === 'terminate') await never()
+        }),
+      }
+      const finalize = vi.fn(() => {
+        calls.push('finalize')
+        return stage === 'finalize' ? never() : undefined
+      })
+      const fixture = createInput(callbacks, finalize)
+      const reconciliation = new WorkerReconciler(callbacks, 10)
+        .reconcile(fixture.input)
+        .catch(reason => reason)
 
-    await vi.runAllTimersAsync()
-    const error = await reconciliation
+      await vi.runAllTimersAsync()
+      const error = await reconciliation
 
-    expect(error.failures.map(failure => failure.stage)).toContain(stage)
-    const expectedCalls = [
-      'exclude',
-      'prepare',
-      'remove',
-      'terminate',
-      'complete',
-      'isPoolRunning',
-      ...(stage === 'isPoolRunning' ? [] : ['shouldReplace']),
-      ...(stage === 'isPoolRunning' || stage === 'shouldReplace'
-        ? []
-        : ['replace']),
-      ...(stage === 'prepare' ? [] : ['restore']),
-      'drain',
-      ...(stage === 'prepare' ? [] : ['finalizeResidual']),
-      'finalize',
-    ]
-    expect(calls).toStrictEqual(expectedCalls)
-    expect(fixture.finalize).toHaveBeenCalledOnce()
-    vi.useRealTimers()
-  })
+      expect(error.failures.map(failure => failure.stage)).toContain(stage)
+      const expectedCalls = [
+        'exclude',
+        'prepare',
+        'remove',
+        'terminate',
+        'complete',
+        'isPoolRunning',
+        ...(stage === 'isPoolRunning' ? [] : ['shouldReplace']),
+        ...(stage === 'isPoolRunning' || stage === 'shouldReplace'
+          ? []
+          : ['replace']),
+        ...(stage === 'prepare' ? [] : ['restore']),
+        'drain',
+        ...(stage === 'prepare' ? [] : ['finalizeResidual']),
+        'finalize',
+      ]
+      expect(calls).toStrictEqual(expectedCalls)
+      expect(fixture.finalize).toHaveBeenCalledOnce()
+      vi.useRealTimers()
+    }
+  )
 
   it.each(['terminate', 'complete', 'replace', 'drain'])(
     'aborts held %s work and prevents its late side effect',
@@ -252,24 +269,28 @@ describe('WorkerReconciler bounded fallbacks', () => {
         restore: vi.fn(),
       }
       const callbacks = {
-        complete: stage === 'complete'
-          ? vi.fn(async (_input, signal) => held(signal))
-          : vi.fn(),
-        drain: stage === 'drain'
-          ? vi.fn(async (_handle, signal) => held(signal))
-          : vi.fn(),
+        complete:
+          stage === 'complete'
+            ? vi.fn(async (_input, signal) => held(signal))
+            : vi.fn(),
+        drain:
+          stage === 'drain'
+            ? vi.fn(async (_handle, signal) => held(signal))
+            : vi.fn(),
         exclude: vi.fn(),
         isPoolRunning: vi.fn(() => true),
         reconcile: vi.fn(() => recovery),
         remove: vi.fn(),
-        replace: stage === 'replace'
-          ? vi.fn(async (_input, signal) => held(signal))
-          : vi.fn(),
+        replace:
+          stage === 'replace'
+            ? vi.fn(async (_input, signal) => held(signal))
+            : vi.fn(),
         shouldReplace: vi.fn(() => true),
         snapshotOwnedWork: vi.fn(() => []),
-        terminate: stage === 'terminate'
-          ? vi.fn(async (_input, signal) => held(signal))
-          : vi.fn(),
+        terminate:
+          stage === 'terminate'
+            ? vi.fn(async (_input, signal) => held(signal))
+            : vi.fn(),
       }
       const fixture = createInput(callbacks)
       const reconciliation = new WorkerReconciler(callbacks, 10)
@@ -357,12 +378,14 @@ describe('WorkerTaskRecovery state policy', () => {
       previousState,
       taskId: `00000000-0000-0000-0000-${previousState.padEnd(12, '0')}`,
     }
-    const restore = vi.fn(reservations => reservations.map(item => ({
-      handle: { lease: item.lease, worker: {} },
-      kind: 'committed',
-      state: 'queued',
-      taskId: item.taskId,
-    })))
+    const restore = vi.fn(reservations =>
+      reservations.map(item => ({
+        handle: { lease: item.lease, worker: {} },
+        kind: 'committed',
+        state: 'queued',
+        taskId: item.taskId,
+      }))
+    )
     const reject = vi.fn(() => true)
     const finalize = vi.fn()
     const recovery = new WorkerTaskRecovery(

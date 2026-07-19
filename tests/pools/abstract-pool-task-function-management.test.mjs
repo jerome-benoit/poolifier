@@ -1,4 +1,15 @@
-import { DEFAULT_TASK_NAME, describe, DynamicThreadPool, expect, FixedClusterPool, it, numberOfWorkers, PoolEvents, waitPoolEvents, WorkerChoiceStrategies } from './abstract-pool-test-support.mjs'
+import {
+  DEFAULT_TASK_NAME,
+  describe,
+  DynamicThreadPool,
+  expect,
+  FixedClusterPool,
+  it,
+  numberOfWorkers,
+  PoolEvents,
+  waitPoolEvents,
+  WorkerChoiceStrategies,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('shadows and restores a static task function without changing the default name', async () => {

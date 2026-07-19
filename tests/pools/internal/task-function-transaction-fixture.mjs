@@ -30,29 +30,44 @@ export const createTransactionFixture = ({
   const sentWaiters = []
   let epoch = 0
   const fixture = {
-    ack: workerId => pending.findLast(item => !item.settled && item.workerId === workerId)?.resolve(true),
-    ackAll: () => pending.filter(item => !item.settled).forEach(item => item.resolve(true)),
+    ack: workerId =>
+      pending
+        .findLast(item => !item.settled && item.workerId === workerId)
+        ?.resolve(true),
+    ackAll: () =>
+      pending.filter(item => !item.settled).forEach(item => item.resolve(true)),
     automatic,
     changeTopology: () => {
       epoch++
       for (const listener of listeners) listener(epoch)
     },
-    changeTopologyWithoutNotification: () => { epoch++ },
+    changeTopologyWithoutNotification: () => {
+      epoch++
+    },
     commits,
-    crash: (workerId, error) => pending.findLast(item => !item.settled && item.workerId === workerId)?.reject(error),
+    crash: (workerId, error) =>
+      pending
+        .findLast(item => !item.settled && item.workerId === workerId)
+        ?.reject(error),
     deferredErrors,
     excluded,
     handles,
     listenerCount: () => listeners.size,
     manager: undefined,
-    nack: workerId => pending.findLast(item => !item.settled && item.workerId === workerId)?.resolve(false),
+    nack: workerId =>
+      pending
+        .findLast(item => !item.settled && item.workerId === workerId)
+        ?.resolve(false),
     quarantined,
     reconcileAdmissions,
     reconciled,
     sent,
-    sentCount: count => sent.length >= count
-      ? Promise.resolve()
-      : new Promise(resolve => { sentWaiters.push({ count, resolve }) }),
+    sentCount: count =>
+      sent.length >= count
+        ? Promise.resolve()
+        : new Promise(resolve => {
+          sentWaiters.push({ count, resolve })
+        }),
   }
   fixture.manager = new TaskFunctionTransactionManager({
     defer: error => {
@@ -71,36 +86,47 @@ export const createTransactionFixture = ({
       onCommit?.(snapshot, previous)
     },
     onPostCommitError,
-    operationId: (() => { let value = 0; return () => `operation-${++value}` })(),
+    operationId: (() => {
+      let value = 0
+      return () => `operation-${++value}`
+    })(),
     reconcile: handle => {
       reconciled.push(handle)
-      reconcileAdmissions.push(fixture.manager.withStableCatalogAdmission(snapshot => snapshot.revision))
+      reconcileAdmissions.push(
+        fixture.manager.withStableCatalogAdmission(
+          snapshot => snapshot.revision
+        )
+      )
     },
-    send: (handle, request, signal) => new Promise((resolve, reject) => {
-      const item = {
-        reject: error => {
-          item.settled = true
-          reject(error)
-        },
-        resolve: value => {
-          item.settled = true
-          resolve(value)
-        },
-        settled: false,
-        workerId: handle.lease.id,
-      }
-      pending.push(item)
-      sent.push({ ...request, workerId: handle.lease.id })
-      for (const waiter of sentWaiters.splice(0)) {
-        if (sent.length >= waiter.count) waiter.resolve()
-        else sentWaiters.push(waiter)
-      }
-      const abort = () => item.reject(signal.reason)
-      signal.addEventListener('abort', abort, { once: true })
-      if (fixture.automatic || (compensationAutomatic && request.operationId.endsWith(':compensate'))) {
-        item.resolve(true)
-      }
-    }),
+    send: (handle, request, signal) =>
+      new Promise((resolve, reject) => {
+        const item = {
+          reject: error => {
+            item.settled = true
+            reject(error)
+          },
+          resolve: value => {
+            item.settled = true
+            resolve(value)
+          },
+          settled: false,
+          workerId: handle.lease.id,
+        }
+        pending.push(item)
+        sent.push({ ...request, workerId: handle.lease.id })
+        for (const waiter of sentWaiters.splice(0)) {
+          if (sent.length >= waiter.count) waiter.resolve()
+          else sentWaiters.push(waiter)
+        }
+        const abort = () => item.reject(signal.reason)
+        signal.addEventListener('abort', abort, { once: true })
+        if (
+          fixture.automatic ||
+          (compensationAutomatic && request.operationId.endsWith(':compensate'))
+        ) {
+          item.resolve(true)
+        }
+      }),
     snapshotReadyHandles: () => handles,
     subscribeTopologyChanges: listener => {
       listeners.add(listener)
@@ -108,8 +134,9 @@ export const createTransactionFixture = ({
     },
     topologyEpoch: () => epoch,
   })
-  fixture.initialization = staticDefaultName == null
-    ? Promise.resolve()
-    : fixture.manager.initializeStaticDefault(staticDefaultName)
+  fixture.initialization =
+    staticDefaultName == null
+      ? Promise.resolve()
+      : fixture.manager.initializeStaticDefault(staticDefaultName)
   return fixture
 }

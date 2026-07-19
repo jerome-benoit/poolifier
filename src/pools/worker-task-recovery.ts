@@ -89,7 +89,9 @@ implements WorkerReconciliationPreparation {
     for (const reservation of [...this.#pending.values()]) {
       if (
         isRecoverable(this.transition.classification, reservation.previousState)
-      ) { continue }
+      ) {
+        continue
+      }
       const error = this.hooks.error(
         reservation.taskId,
         reservation.previousState

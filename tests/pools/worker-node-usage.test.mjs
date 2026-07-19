@@ -12,7 +12,11 @@ describe('Worker node task-function usage', () => {
     threadWorkerNode = new WorkerNode(
       WorkerTypes.thread,
       './tests/worker-files/thread/testWorker.mjs',
-      { tasksQueueBackPressureSize: 12, tasksQueueBucketSize: 6, tasksQueuePriority: true }
+      {
+        tasksQueueBackPressureSize: 12,
+        tasksQueueBucketSize: 6,
+        tasksQueuePriority: true,
+      }
     )
   })
 

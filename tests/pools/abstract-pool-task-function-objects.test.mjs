@@ -1,4 +1,12 @@
-import { CircularBuffer, DEFAULT_TASK_NAME, describe, DynamicThreadPool, expect, it, numberOfWorkers } from './abstract-pool-test-support.mjs'
+import {
+  CircularBuffer,
+  DEFAULT_TASK_NAME,
+  describe,
+  DynamicThreadPool,
+  expect,
+  it,
+  numberOfWorkers,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that task function objects worker is working', async () => {

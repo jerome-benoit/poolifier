@@ -9,63 +9,68 @@ describe('Worker node notification failures', () => {
     ['port unref non-Error', 'unref', { marker: 'port-unref-failure' }],
     ['port close Error', 'close', new Error('port close failed')],
     ['port close non-Error', 'close', { marker: 'port-close-failure' }],
-  ])('Worker node terminate() preserves the first %s while completing teardown', {
-    retry: 0,
-  }, async (_name, failingOperation, channelError) => {
-    // Given every teardown stage fails after the selected channel operation
-    const workerNode = new WorkerNode(
-      WorkerTypes.thread,
-      './tests/worker-files/thread/testWorker.mjs',
-      {
-        tasksQueueBackPressureSize: 12,
-        tasksQueueBucketSize: 6,
-        tasksQueuePriority: true,
-      }
-    )
-    const nativeTerminate = workerNode.worker.terminate.bind(workerNode.worker)
-    const messageChannel = workerNode.messageChannel
-    const nativeError = new Error('native terminate failed')
-    const notificationError = new Error('terminated notification failed')
-    const port1UnrefSpy = vi.spyOn(messageChannel.port1, 'unref')
-    const port2UnrefSpy = vi.spyOn(messageChannel.port2, 'unref')
-    const port1CloseSpy = vi.spyOn(messageChannel.port1, 'close')
-    const port2CloseSpy = vi.spyOn(messageChannel.port2, 'close')
-    const failingSpy = failingOperation === 'unref'
-      ? port1UnrefSpy
-      : port1CloseSpy
-    failingSpy.mockImplementation(() => {
-      throw channelError
-    })
-    const terminateSpy = vi
-      .spyOn(workerNode.worker, 'terminate')
-      .mockImplementation(() => {
-        throw nativeError
+  ])(
+    'Worker node terminate() preserves the first %s while completing teardown',
+    {
+      retry: 0,
+    },
+    async (_name, failingOperation, channelError) => {
+      // Given every teardown stage fails after the selected channel operation
+      const workerNode = new WorkerNode(
+        WorkerTypes.thread,
+        './tests/worker-files/thread/testWorker.mjs',
+        {
+          tasksQueueBackPressureSize: 12,
+          tasksQueueBucketSize: 6,
+          tasksQueuePriority: true,
+        }
+      )
+      const nativeTerminate = workerNode.worker.terminate.bind(
+        workerNode.worker
+      )
+      const messageChannel = workerNode.messageChannel
+      const nativeError = new Error('native terminate failed')
+      const notificationError = new Error('terminated notification failed')
+      const port1UnrefSpy = vi.spyOn(messageChannel.port1, 'unref')
+      const port2UnrefSpy = vi.spyOn(messageChannel.port2, 'unref')
+      const port1CloseSpy = vi.spyOn(messageChannel.port1, 'close')
+      const port2CloseSpy = vi.spyOn(messageChannel.port2, 'close')
+      const failingSpy =
+        failingOperation === 'unref' ? port1UnrefSpy : port1CloseSpy
+      failingSpy.mockImplementation(() => {
+        throw channelError
       })
-    let notifications = 0
-    workerNode.on('terminated', () => {
-      ++notifications
-      throw notificationError
-    })
+      const terminateSpy = vi
+        .spyOn(workerNode.worker, 'terminate')
+        .mockImplementation(() => {
+          throw nativeError
+        })
+      let notifications = 0
+      workerNode.on('terminated', () => {
+        ++notifications
+        throw notificationError
+      })
 
-    try {
-      // When termination is initiated
-      await expect(workerNode.terminate()).rejects.toBe(channelError)
+      try {
+        // When termination is initiated
+        await expect(workerNode.terminate()).rejects.toBe(channelError)
 
-      // Then all teardown actions run once and the first failure wins
-      expect(port1UnrefSpy).toHaveBeenCalledTimes(1)
-      expect(port2UnrefSpy).toHaveBeenCalledTimes(1)
-      expect(port1CloseSpy).toHaveBeenCalledTimes(1)
-      expect(port2CloseSpy).toHaveBeenCalledTimes(1)
-      expect(terminateSpy).toHaveBeenCalledTimes(1)
-      expect(notifications).toBe(1)
-      expect(workerNode.messageChannel).toBeUndefined()
-      expect(workerNode.worker.eventNames()).toStrictEqual([])
-      expect(workerNode.eventNames()).toStrictEqual([])
-    } finally {
-      vi.restoreAllMocks()
-      await nativeTerminate()
+        // Then all teardown actions run once and the first failure wins
+        expect(port1UnrefSpy).toHaveBeenCalledTimes(1)
+        expect(port2UnrefSpy).toHaveBeenCalledTimes(1)
+        expect(port1CloseSpy).toHaveBeenCalledTimes(1)
+        expect(port2CloseSpy).toHaveBeenCalledTimes(1)
+        expect(terminateSpy).toHaveBeenCalledTimes(1)
+        expect(notifications).toBe(1)
+        expect(workerNode.messageChannel).toBeUndefined()
+        expect(workerNode.worker.eventNames()).toStrictEqual([])
+        expect(workerNode.eventNames()).toStrictEqual([])
+      } finally {
+        vi.restoreAllMocks()
+        await nativeTerminate()
+      }
     }
-  })
+  )
 
   it('Worker node terminate() preserves a raw invocation error over notification errors', {
     retry: 0,

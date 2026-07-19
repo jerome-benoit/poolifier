@@ -1,4 +1,13 @@
-import { describe, EventEmitterAsyncResource, expect, FixedThreadPool, it, numberOfWorkers, ready, WorkerChoiceStrategies } from './abstract-pool-test-support.mjs'
+import {
+  describe,
+  EventEmitterAsyncResource,
+  expect,
+  FixedThreadPool,
+  it,
+  numberOfWorkers,
+  ready,
+  WorkerChoiceStrategies,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that pool options are checked', async () => {

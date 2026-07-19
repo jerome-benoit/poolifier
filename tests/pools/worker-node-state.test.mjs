@@ -15,12 +15,20 @@ describe('Worker node initial state', () => {
     threadWorkerNode = new WorkerNode(
       WorkerTypes.thread,
       './tests/worker-files/thread/testWorker.mjs',
-      { tasksQueueBackPressureSize: 12, tasksQueueBucketSize: 6, tasksQueuePriority: true }
+      {
+        tasksQueueBackPressureSize: 12,
+        tasksQueueBucketSize: 6,
+        tasksQueuePriority: true,
+      }
     )
     clusterWorkerNode = new WorkerNode(
       WorkerTypes.cluster,
       './tests/worker-files/cluster/testWorker.cjs',
-      { tasksQueueBackPressureSize: 12, tasksQueueBucketSize: 6, tasksQueuePriority: true }
+      {
+        tasksQueueBackPressureSize: 12,
+        tasksQueueBucketSize: 6,
+        tasksQueuePriority: true,
+      }
     )
   })
 

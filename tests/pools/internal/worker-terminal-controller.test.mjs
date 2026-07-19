@@ -59,10 +59,10 @@ describe('WorkerTerminalController', () => {
     expect(callbacks.rejectOwnedTasks).not.toHaveBeenCalled()
     expect(callbacks.rejectTaskFunctionRequests).not.toHaveBeenCalled()
     expect(coordinator.promoteTerminalFault).not.toHaveBeenCalled()
-    expect(coordinator.exit).toHaveBeenCalledExactlyOnceWith(
-      handle,
-      { code: 0, signal: null }
-    )
+    expect(coordinator.exit).toHaveBeenCalledExactlyOnceWith(handle, {
+      code: 0,
+      signal: null,
+    })
   })
 
   it('does not suppress an error emitted during physical termination', async () => {
@@ -88,9 +88,12 @@ describe('WorkerTerminalController', () => {
     await callbacks.track.mock.calls[0][1]
 
     const poolError = callbacks.rejectOwnedTasks.mock.calls[0][1]
-    const managementError = callbacks.rejectTaskFunctionRequests.mock.calls[0][1]
+    const managementError =
+      callbacks.rejectTaskFunctionRequests.mock.calls[0][1]
     expect(poolError).toBeInstanceOf(WorkerCrashError)
-    expect(poolError.message).toBe('Worker node crashed: crashed while terminating')
+    expect(poolError.message).toBe(
+      'Worker node crashed: crashed while terminating'
+    )
     expect(poolError.cause).toBe(cause)
     expect(poolError.taskId).toBeUndefined()
     expect(poolError.workerId).toBe(handle.lease.id)
@@ -113,10 +116,9 @@ describe('WorkerTerminalController', () => {
       handle,
       poolError
     )
-    expect(callbacks.rejectTaskFunctionRequests).toHaveBeenCalledExactlyOnceWith(
-      handle,
-      managementError
-    )
+    expect(
+      callbacks.rejectTaskFunctionRequests
+    ).toHaveBeenCalledExactlyOnceWith(handle, managementError)
     expect(coordinator.promoteTerminalFault).toHaveBeenCalledExactlyOnceWith(
       handle,
       poolError
@@ -144,7 +146,8 @@ describe('WorkerTerminalController', () => {
       await callbacks.track.mock.calls[0][1]
 
       const poolError = callbacks.rejectOwnedTasks.mock.calls[0][1]
-      const managementError = callbacks.rejectTaskFunctionRequests.mock.calls[0][1]
+      const managementError =
+        callbacks.rejectTaskFunctionRequests.mock.calls[0][1]
       expect(poolError).toBeInstanceOf(WorkerCrashError)
       expect(poolError).not.toBe(taskError)
       expect(poolError.message).toBe(
@@ -160,7 +163,9 @@ describe('WorkerTerminalController', () => {
       expect(managementError).not.toBe(poolError)
       expect(managementError.message).toBe('Worker node crashed')
       expect(Object.hasOwn(managementError, 'cause')).toBe(false)
-      expect(managementError.message).not.toContain('promoted crash raw sentinel')
+      expect(managementError.message).not.toContain(
+        'promoted crash raw sentinel'
+      )
       expect(managementError.stack).not.toContain('promoted crash raw sentinel')
       expect(managementError.taskId).toBeUndefined()
       expect(managementError.workerId).toBe(poolError.workerId)
@@ -171,54 +176,61 @@ describe('WorkerTerminalController', () => {
         handle,
         poolError
       )
-      expect(callbacks.rejectTaskFunctionRequests).toHaveBeenCalledExactlyOnceWith(
-        handle,
-        managementError
-      )
+      expect(
+        callbacks.rejectTaskFunctionRequests
+      ).toHaveBeenCalledExactlyOnceWith(handle, managementError)
       expect(coordinator.promoteTerminalFault).toHaveBeenCalledExactlyOnceWith(
         handle,
         poolError
       )
       expect(coordinator.reconcileTerminal).toHaveBeenCalledOnce()
-      expect(coordinator.reconcileTerminal.mock.calls[0][1].cause).toBe(poolError)
+      expect(coordinator.reconcileTerminal.mock.calls[0][1].cause).toBe(
+        poolError
+      )
     }
   )
 
   it.each([
-    ['error then exit', (controller, handle, cause) => {
-      controller.error(handle, cause)
-      controller.exit(handle, 9, 'SIGKILL')
-    }],
-    ['exit then error', (controller, handle, cause) => {
-      controller.exit(handle, 9, 'SIGKILL')
-      controller.error(handle, cause)
-    }],
-  ])('deduplicates %s into one representative and reconciliation', async (
-    _order,
-    signal
-  ) => {
-    const { callbacks, controller, coordinator } = createFixture()
-    const drain = Promise.withResolvers()
-    const handle = createHandle(createWorker(drain))
+    [
+      'error then exit',
+      (controller, handle, cause) => {
+        controller.error(handle, cause)
+        controller.exit(handle, 9, 'SIGKILL')
+      },
+    ],
+    [
+      'exit then error',
+      (controller, handle, cause) => {
+        controller.exit(handle, 9, 'SIGKILL')
+        controller.error(handle, cause)
+      },
+    ],
+  ])(
+    'deduplicates %s into one representative and reconciliation',
+    async (_order, signal) => {
+      const { callbacks, controller, coordinator } = createFixture()
+      const drain = Promise.withResolvers()
+      const handle = createHandle(createWorker(drain))
 
-    signal(controller, handle, new Error('terminal error'))
-    expect(callbacks.track).toHaveBeenCalledTimes(2)
-    expect(callbacks.track.mock.calls[1][1]).toBe(
-      callbacks.track.mock.calls[0][1]
-    )
-    drain.resolve()
-    await callbacks.track.mock.calls[0][1]
+      signal(controller, handle, new Error('terminal error'))
+      expect(callbacks.track).toHaveBeenCalledTimes(2)
+      expect(callbacks.track.mock.calls[1][1]).toBe(
+        callbacks.track.mock.calls[0][1]
+      )
+      drain.resolve()
+      await callbacks.track.mock.calls[0][1]
 
-    const representative = callbacks.rejectOwnedTasks.mock.results[0].value
-    expect(representative).toBeInstanceOf(WorkerCrashError)
-    expect(callbacks.rejectOwnedTasks).toHaveBeenCalledOnce()
-    expect(callbacks.rejectTaskFunctionRequests).toHaveBeenCalledOnce()
-    expect(coordinator.promoteTerminalFault).toHaveBeenCalledOnce()
-    expect(coordinator.promoteTerminalFault.mock.calls[0][1]).toBe(
-      representative
-    )
-    expect(coordinator.reconcileTerminal).toHaveBeenCalledOnce()
-  })
+      const representative = callbacks.rejectOwnedTasks.mock.results[0].value
+      expect(representative).toBeInstanceOf(WorkerCrashError)
+      expect(callbacks.rejectOwnedTasks).toHaveBeenCalledOnce()
+      expect(callbacks.rejectTaskFunctionRequests).toHaveBeenCalledOnce()
+      expect(coordinator.promoteTerminalFault).toHaveBeenCalledOnce()
+      expect(coordinator.promoteTerminalFault.mock.calls[0][1]).toBe(
+        representative
+      )
+      expect(coordinator.reconcileTerminal).toHaveBeenCalledOnce()
+    }
+  )
 
   it('keeps terminal state independent for worker objects sharing an ID', async () => {
     const { callbacks, controller, coordinator } = createFixture()

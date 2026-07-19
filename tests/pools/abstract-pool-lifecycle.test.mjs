@@ -1,4 +1,15 @@
-import { describe, expect, FixedClusterPool, FixedThreadPool, it, numberOfWorkers, PoolEvents, ready, vi, WorkerNode } from './abstract-pool-test-support.mjs'
+import {
+  describe,
+  expect,
+  FixedClusterPool,
+  FixedThreadPool,
+  it,
+  numberOfWorkers,
+  PoolEvents,
+  ready,
+  vi,
+  WorkerNode,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that pool statuses are checked at start or destroy', async () => {
@@ -82,9 +93,13 @@ describe('Abstract pool test suite', () => {
     const manager = pool.taskFunctionTransactionManager
     const synchronize = manager.synchronize.bind(manager)
     let releaseReplay
-    const replayBlocked = new Promise(resolve => { releaseReplay = resolve })
+    const replayBlocked = new Promise(resolve => {
+      releaseReplay = resolve
+    })
     let notifyReplayStarted
-    const replayStarted = new Promise(resolve => { notifyReplayStarted = resolve })
+    const replayStarted = new Promise(resolve => {
+      notifyReplayStarted = resolve
+    })
     manager.synchronize = vi.fn(async handle => {
       notifyReplayStarted()
       await replayBlocked
@@ -130,7 +145,9 @@ describe('Abstract pool test suite', () => {
       return await synchronize(handle)
     })
     let notifyErrorObserved
-    const errorObserved = new Promise(resolve => { notifyErrorObserved = resolve })
+    const errorObserved = new Promise(resolve => {
+      notifyErrorObserved = resolve
+    })
     pool.publishPoolError = error => {
       notifyErrorObserved(error)
     }

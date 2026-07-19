@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { currentLease, registerTask, selectedLease } from './task-registry-fixture.mjs'
+import {
+  currentLease,
+  registerTask,
+  selectedLease,
+} from './task-registry-fixture.mjs'
 
 describe('Task registry invariants', () => {
   it('enforces lease invariants without mutating invalid transitions', () => {

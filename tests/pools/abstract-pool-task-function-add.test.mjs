@@ -1,6 +1,17 @@
 import { vi } from 'vitest'
 
-import { CircularBuffer, DEFAULT_TASK_NAME, describe, DynamicThreadPool, expect, it, numberOfWorkers, PoolEvents, waitPoolEvents, WorkerChoiceStrategies } from './abstract-pool-test-support.mjs'
+import {
+  CircularBuffer,
+  DEFAULT_TASK_NAME,
+  describe,
+  DynamicThreadPool,
+  expect,
+  it,
+  numberOfWorkers,
+  PoolEvents,
+  waitPoolEvents,
+  WorkerChoiceStrategies,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('dispatches a committed task function when a post-commit projection throws', async () => {
@@ -13,16 +24,24 @@ describe('Abstract pool test suite', () => {
     const workersBeforeCommit = [...dynamicThreadPool.workerNodes]
     const thrown = { source: 'strategy projection' }
     const errors = []
-    dynamicThreadPool.emitter.on(PoolEvents.error, error => { errors.push(error) })
+    dynamicThreadPool.emitter.on(PoolEvents.error, error => {
+      errors.push(error)
+    })
     vi.spyOn(
       dynamicThreadPool.workerChoiceStrategiesContext,
       'syncWorkerChoiceStrategies'
-    ).mockImplementation(() => { throw thrown })
+    ).mockImplementation(() => {
+      throw thrown
+    })
     const echo = data => data
 
-    await expect(dynamicThreadPool.addTaskFunction('committed-echo', echo)).resolves.toBe(true)
+    await expect(
+      dynamicThreadPool.addTaskFunction('committed-echo', echo)
+    ).resolves.toBe(true)
 
-    expect(dynamicThreadPool.taskFunctionTransactionManager.snapshot.revision).toBe(1)
+    expect(
+      dynamicThreadPool.taskFunctionTransactionManager.snapshot.revision
+    ).toBe(1)
     expect(errors).toStrictEqual([thrown])
     expect(dynamicThreadPool.workerNodes).toStrictEqual(workersBeforeCommit)
     await expect(

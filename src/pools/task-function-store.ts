@@ -18,7 +18,8 @@ export class TaskFunctionStore<Data = unknown, Response = unknown> {
   ) {}
 
   public get (name: string): TaskFunctionObject<Data, Response> | undefined {
-    return this.snapshot().entries.find(entry => entry.name === name)?.taskFunction
+    return this.snapshot().entries.find(entry => entry.name === name)
+      ?.taskFunction
   }
 
   public has (
@@ -37,9 +38,8 @@ export class TaskFunctionStore<Data = unknown, Response = unknown> {
   public listProperties (
     propertiesByWorker: TaskFunctionPropertiesByWorker
   ): readonly TaskFunctionProperties[] {
-    const staticProperties = propertiesByWorker.find(
-      properties => properties.length > 0
-    ) ?? []
+    const staticProperties =
+      propertiesByWorker.find(properties => properties.length > 0) ?? []
     const byName = new Map(
       staticProperties
         .filter(properties => properties.name !== DEFAULT_TASK_NAME)
@@ -53,12 +53,12 @@ export class TaskFunctionStore<Data = unknown, Response = unknown> {
       )
     }
     const entries = [...byName.values()]
-    const defaultName = snapshot.defaultName === DEFAULT_TASK_NAME
-      ? staticProperties.at(1)?.name
-      : snapshot.defaultName
+    const defaultName =
+      snapshot.defaultName === DEFAULT_TASK_NAME
+        ? staticProperties.at(1)?.name
+        : snapshot.defaultName
     const defaultProperties = byName.get(defaultName ?? '') ??
-      staticProperties.at(0) ??
-      { name: DEFAULT_TASK_NAME }
+      staticProperties.at(0) ?? { name: DEFAULT_TASK_NAME }
     return [
       { ...defaultProperties, name: DEFAULT_TASK_NAME },
       ...entries.sort((left, right) => {
@@ -130,9 +130,8 @@ export class TaskFunctionStore<Data = unknown, Response = unknown> {
     propertiesByWorker: TaskFunctionPropertiesByWorker
   ): TaskFunctionProperties | undefined {
     const properties = this.listProperties(propertiesByWorker)
-    const resolvedName = name == null || name === DEFAULT_TASK_NAME
-      ? DEFAULT_TASK_NAME
-      : name
+    const resolvedName =
+      name == null || name === DEFAULT_TASK_NAME ? DEFAULT_TASK_NAME : name
     return properties.find(candidate => candidate.name === resolvedName)
   }
 }

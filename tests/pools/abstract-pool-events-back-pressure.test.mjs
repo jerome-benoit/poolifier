@@ -1,4 +1,20 @@
-import { createHook, describe, expect, FixedThreadPool, getEventListeners, it, nativeQueueMicrotask, numberOfWorkers, PoolEvents, PoolTypes, ready, version, vi, WorkerChoiceStrategies, WorkerTypes } from './abstract-pool-test-support.mjs'
+import {
+  createHook,
+  describe,
+  expect,
+  FixedThreadPool,
+  getEventListeners,
+  it,
+  nativeQueueMicrotask,
+  numberOfWorkers,
+  PoolEvents,
+  PoolTypes,
+  ready,
+  version,
+  vi,
+  WorkerChoiceStrategies,
+  WorkerTypes,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it("Verify that pool event emitter 'backPressure' and 'backPressureEnd' events can register a callback", async () => {

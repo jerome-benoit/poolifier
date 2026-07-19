@@ -45,13 +45,15 @@ describe('Fixed thread pool error test suite', () => {
       }
     )
     await Promise.all(
-      [errorPool, asyncErrorPool, asyncPool, busyPool].map(async currentPool => {
-        if (!currentPool.info.ready) {
-          await new Promise(resolve =>
-            currentPool.emitter.once(PoolEvents.ready, resolve)
-          )
+      [errorPool, asyncErrorPool, asyncPool, busyPool].map(
+        async currentPool => {
+          if (!currentPool.info.ready) {
+            await new Promise(resolve =>
+              currentPool.emitter.once(PoolEvents.ready, resolve)
+            )
+          }
         }
-      })
+      )
     )
   })
 

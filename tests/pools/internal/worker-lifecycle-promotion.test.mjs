@@ -57,7 +57,11 @@ describe('Worker lifecycle terminal promotion', () => {
       }),
       expect.any(AbortSignal)
     )
-    expect(result).toMatchObject({ cause: crash, classification: 'faulted', exit })
+    expect(result).toMatchObject({
+      cause: crash,
+      classification: 'faulted',
+      exit,
+    })
     expect(callbacks.exclude).toHaveBeenCalledOnce()
     expect(callbacks.reconcile).toHaveBeenCalledOnce()
     expect(callbacks.replace).toHaveBeenCalledOnce()
@@ -96,7 +100,11 @@ describe('Worker lifecycle terminal promotion', () => {
       }),
       expect.any(AbortSignal)
     )
-    expect(result).toMatchObject({ cause: crash, classification: 'faulted', exit })
+    expect(result).toMatchObject({
+      cause: crash,
+      classification: 'faulted',
+      exit,
+    })
     expect(callbacks.exclude).toHaveBeenCalledOnce()
     expect(callbacks.reconcile).toHaveBeenCalledOnce()
     expect(callbacks.replace).toHaveBeenCalledOnce()
@@ -125,7 +133,8 @@ describe('Worker lifecycle terminal promotion', () => {
         Reflect.get(coordinator, 'promoteTerminalFault'),
         coordinator,
         [handle, crash, { code: 1 }]
-      ))
+      )
+    )
 
     expect(decisions).toStrictEqual([false, false, false, false, false])
     expect(coordinator.topologyEpoch).toBe(epoch)
@@ -142,11 +151,12 @@ describe('Worker lifecycle terminal promotion', () => {
     const epoch = coordinator.topologyEpoch
     const crash = new Error('crash')
 
-    const promote = () => Reflect.apply(
-      Reflect.get(coordinator, 'promoteTerminalFault'),
-      coordinator,
-      [handle, crash]
-    )
+    const promote = () =>
+      Reflect.apply(
+        Reflect.get(coordinator, 'promoteTerminalFault'),
+        coordinator,
+        [handle, crash]
+      )
     expect(promote()).toBe(true)
     expect(promote()).toBe(false)
     expect(coordinator.topologyEpoch).toBe(epoch + 1)

@@ -22,7 +22,9 @@ socket.on('message', buffer => {
     if (data.action === 'ack') worker.completeOperation(operation)
     if (data.action === 'ack-crash') {
       worker.completeOperation(operation)
-      setImmediate(() => { throw new Error('crash after ACK') })
+      setImmediate(() => {
+        throw new Error('crash after ACK')
+      })
     }
     if (data.action === 'nack') worker.rejectOperation(operation)
   }
@@ -36,7 +38,9 @@ const execute = data => {
   post({ event: 'dispatch', ...data })
   switch (data.action) {
     case 'error-exit':
-      setImmediate(() => { throw new Error('cluster error then exit') })
+      setImmediate(() => {
+        throw new Error('cluster error then exit')
+      })
       return new Promise(() => {})
     case 'reply-exit':
       setImmediate(() => {

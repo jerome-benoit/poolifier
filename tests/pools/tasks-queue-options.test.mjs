@@ -153,71 +153,75 @@ describe('Pool tasks queue options test suite', () => {
     })
   })
 
-  describe.each(validTasksFinishedTimeouts)('tasksFinishedTimeout $label', ({
-    value,
-  }) => {
-    it('accepts the value through the direct utility', () => {
-      // Given
-      const tasksQueueOptions = { tasksFinishedTimeout: value }
+  describe.each(validTasksFinishedTimeouts)(
+    'tasksFinishedTimeout $label',
+    ({ value }) => {
+      it('accepts the value through the direct utility', () => {
+        // Given
+        const tasksQueueOptions = { tasksFinishedTimeout: value }
 
-      // When / Then
-      expect(() => checkValidTasksQueueOptions(tasksQueueOptions)).not.toThrow()
-    })
+        // When / Then
+        expect(() =>
+          checkValidTasksQueueOptions(tasksQueueOptions)
+        ).not.toThrow()
+      })
 
-    it('accepts the value through the pool constructor', () => {
-      // Given
-      const tasksQueueOptions = { tasksFinishedTimeout: value }
+      it('accepts the value through the pool constructor', () => {
+        // Given
+        const tasksQueueOptions = { tasksFinishedTimeout: value }
 
-      // When / Then
-      expect(() => createInactivePool(tasksQueueOptions)).not.toThrow()
-    })
+        // When / Then
+        expect(() => createInactivePool(tasksQueueOptions)).not.toThrow()
+      })
 
-    it('accepts the value through the runtime setter', () => {
-      // Given
-      const pool = createInactivePool()
+      it('accepts the value through the runtime setter', () => {
+        // Given
+        const pool = createInactivePool()
 
-      // When / Then
-      expect(() =>
-        pool.setTasksQueueOptions({ tasksFinishedTimeout: value })
-      ).not.toThrow()
-    })
-  })
+        // When / Then
+        expect(() =>
+          pool.setTasksQueueOptions({ tasksFinishedTimeout: value })
+        ).not.toThrow()
+      })
+    }
+  )
 
-  describe.each(
-    invalidTasksFinishedTimeouts
-  )('invalid tasksFinishedTimeout: $label', ({ error, value }) => {
-    it('rejects the value through the direct utility', () => {
-      // Given
-      const tasksQueueOptions = { tasksFinishedTimeout: value }
+  describe.each(invalidTasksFinishedTimeouts)(
+    'invalid tasksFinishedTimeout: $label',
+    ({ error, value }) => {
+      it('rejects the value through the direct utility', () => {
+        // Given
+        const tasksQueueOptions = { tasksFinishedTimeout: value }
 
-      // When / Then
-      expect(() => checkValidTasksQueueOptions(tasksQueueOptions)).toThrow(
-        error
-      )
-    })
+        // When / Then
+        expect(() => checkValidTasksQueueOptions(tasksQueueOptions)).toThrow(
+          error
+        )
+      })
 
-    it('rejects the value through the pool constructor', () => {
-      // Given
-      const tasksQueueOptions = { tasksFinishedTimeout: value }
+      it('rejects the value through the pool constructor', () => {
+        // Given
+        const tasksQueueOptions = { tasksFinishedTimeout: value }
 
-      // When / Then
-      expect(() => createInactivePool(tasksQueueOptions)).toThrow(error)
-    })
+        // When / Then
+        expect(() => createInactivePool(tasksQueueOptions)).toThrow(error)
+      })
 
-    it('rejects the value through the runtime setter without mutation', () => {
-      // Given
-      const pool = createInactivePool()
-      const tasksQueueOptions = { ...pool.opts.tasksQueueOptions }
+      it('rejects the value through the runtime setter without mutation', () => {
+        // Given
+        const pool = createInactivePool()
+        const tasksQueueOptions = { ...pool.opts.tasksQueueOptions }
 
-      // When
-      expect(() =>
-        pool.setTasksQueueOptions({ tasksFinishedTimeout: value })
-      ).toThrow(error)
+        // When
+        expect(() =>
+          pool.setTasksQueueOptions({ tasksFinishedTimeout: value })
+        ).toThrow(error)
 
-      // Then
-      expect(pool.opts.tasksQueueOptions).toStrictEqual(tasksQueueOptions)
-    })
-  })
+        // Then
+        expect(pool.opts.tasksQueueOptions).toStrictEqual(tasksQueueOptions)
+      })
+    }
+  )
 
   it('destroys immediately when tasksFinishedTimeout is zero', async () => {
     // Given

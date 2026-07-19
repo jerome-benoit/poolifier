@@ -6,7 +6,8 @@ import { createCrashRecoveryThreadTransport } from './crash-recovery-transport-t
 
 describe('Thread crash cause isolation', { retry: 0, timeout: 240_000 }, () => {
   const { trackPool } = createCrashRecoveryTestContext()
-  const { closeInboxes, once, start } = createCrashRecoveryThreadTransport(trackPool)
+  const { closeInboxes, once, start } =
+    createCrashRecoveryThreadTransport(trackPool)
 
   afterEach(closeInboxes)
 
@@ -19,7 +20,10 @@ describe('Thread crash cause isolation', { retry: 0, timeout: 240_000 }, () => {
     const firstToken = 'cause-isolation-first'
     const secondToken = 'cause-isolation-second'
     const firstTask = pool.execute({ action: 'wait-crash', token: firstToken })
-    const secondTask = pool.execute({ action: 'wait-crash', token: secondToken })
+    const secondTask = pool.execute({
+      action: 'wait-crash',
+      token: secondToken,
+    })
     const outcome = Promise.allSettled([firstTask, secondTask])
     const [firstDispatch, secondDispatch] = await Promise.all([
       inbox.take(message => message.token === firstToken),
@@ -46,10 +50,7 @@ describe('Thread crash cause isolation', { retry: 0, timeout: 240_000 }, () => {
       target: firstDispatch.id,
     })
 
-    const [results, poolError] = await Promise.all([
-      outcome,
-      poolErrorObserved,
-    ])
+    const [results, poolError] = await Promise.all([outcome, poolErrorObserved])
     await replacement
 
     expect(results.map(result => result.status)).toStrictEqual([

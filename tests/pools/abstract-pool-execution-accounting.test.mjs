@@ -1,4 +1,14 @@
-import { CircularBuffer, describe, DynamicThreadPool, expect, FixedClusterPool, it, numberOfWorkers, ready, WorkerChoiceStrategies } from './abstract-pool-test-support.mjs'
+import {
+  CircularBuffer,
+  describe,
+  DynamicThreadPool,
+  expect,
+  FixedClusterPool,
+  it,
+  numberOfWorkers,
+  ready,
+  WorkerChoiceStrategies,
+} from './abstract-pool-test-support.mjs'
 
 describe('Abstract pool test suite', () => {
   it('Verify that pool execute() arguments are checked', async () => {

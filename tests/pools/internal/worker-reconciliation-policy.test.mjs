@@ -23,31 +23,37 @@ it('keeps lease ownership outside replacement policy', () => {
 it.each([
   ['dynamic', true, 'createDynamic'],
   ['fixed', false, 'replenishFixed'],
-])('publishes and rethrows the exact %s replacement failure', async (
-  _kind,
-  dynamic,
-  replacementHook
-) => {
-  const failure = { replacement: replacementHook }
-  const hooks = createHooks()
-  hooks[replacementHook].mockImplementation(() => {
-    throw failure
-  })
-  const policy = new WorkerReconciliationPolicy(hooks)
-  const lease = { generation: 3, id: 9 }
-  const worker = {
-    info: { dynamic },
-    usage: { tasks: { executed: 1, failed: 2 } },
+])(
+  'publishes and rethrows the exact %s replacement failure',
+  async (_kind, dynamic, replacementHook) => {
+    const failure = { replacement: replacementHook }
+    const hooks = createHooks()
+    hooks[replacementHook].mockImplementation(() => {
+      throw failure
+    })
+    const policy = new WorkerReconciliationPolicy(hooks)
+    const lease = { generation: 3, id: 9 }
+    const worker = {
+      info: { dynamic },
+      usage: { tasks: { executed: 1, failed: 2 } },
+    }
+
+    const rejected = await Promise.resolve()
+      .then(() =>
+        policy.replace(
+          {
+            classification: 'faulted',
+            handle: { lease, worker },
+          },
+          signal
+        )
+      )
+      .catch(error => error)
+
+    expect(hooks.publishError).toHaveBeenCalledWith(failure, lease)
+    expect(rejected).toBe(failure)
   }
-
-  const rejected = await Promise.resolve().then(() => policy.replace({
-    classification: 'faulted',
-    handle: { lease, worker },
-  }, signal)).catch(error => error)
-
-  expect(hooks.publishError).toHaveBeenCalledWith(failure, lease)
-  expect(rejected).toBe(failure)
-})
+)
 
 it('preserves the replacement failure when error publication also throws', async () => {
   const primary = { replacement: 'failed' }
@@ -62,16 +68,23 @@ it('preserves the replacement failure when error publication also throws', async
   })
   const policy = new WorkerReconciliationPolicy(hooks)
 
-  const rejected = await Promise.resolve().then(() => policy.replace({
-    classification: 'faulted',
-    handle: {
-      lease,
-      worker: {
-        info: { dynamic: false },
-        usage: { tasks: { executed: 0, failed: 0 } },
-      },
-    },
-  }, signal)).catch(error => error)
+  const rejected = await Promise.resolve()
+    .then(() =>
+      policy.replace(
+        {
+          classification: 'faulted',
+          handle: {
+            lease,
+            worker: {
+              info: { dynamic: false },
+              usage: { tasks: { executed: 0, failed: 0 } },
+            },
+          },
+        },
+        signal
+      )
+    )
+    .catch(error => error)
 
   expect(hooks.publishError).toHaveBeenCalledExactlyOnceWith(primary, lease)
   expect(rejected).toBe(primary)
@@ -102,10 +115,17 @@ it('publishes and rethrows replacement accounting failures', async () => {
   const policy = new WorkerReconciliationPolicy(hooks)
   const lease = { generation: 1, id: 1 }
 
-  const rejected = await Promise.resolve().then(() => policy.replace({
-    classification: 'faulted',
-    handle: { lease, worker: source },
-  }, signal)).catch(error => error)
+  const rejected = await Promise.resolve()
+    .then(() =>
+      policy.replace(
+        {
+          classification: 'faulted',
+          handle: { lease, worker: source },
+        },
+        signal
+      )
+    )
+    .catch(error => error)
 
   expect(hooks.publishError).toHaveBeenCalledWith(failure, lease)
   expect(rejected).toBe(failure)
@@ -117,12 +137,15 @@ it('commits reconciliation preparation before physical drain', async () => {
   const worker = { info: { dynamic: false } }
   const handle = { lease: { generation: 1, id: 2 }, worker }
 
-  const recovery = policy.reconcile({
-    classification: 'faulted',
-    handle,
-    ownedTaskIds: ['task'],
-    previousState: 'ready',
-  }, signal)
+  const recovery = policy.reconcile(
+    {
+      classification: 'faulted',
+      handle,
+      ownedTaskIds: ['task'],
+      previousState: 'ready',
+    },
+    signal
+  )
   await recovery.prepare(signal)
   expect(hooks.reserve).toHaveBeenCalledBefore(hooks.drainPhysical)
   expect(hooks.drainPhysical).toHaveBeenCalledBefore(hooks.reject)
@@ -142,16 +165,21 @@ it('does not finish execution after a timed-out drain preparation resumes', asyn
   hooks.waitForDrain.mockReturnValue(gate.promise)
   const policy = new WorkerReconciliationPolicy(hooks)
   const controller = new AbortController()
-  const recovery = policy.reconcile({
-    classification: 'draining',
-    handle: {
-      lease: { generation: 1, id: 2 },
-      worker: { info: { dynamic: false } },
+  const recovery = policy.reconcile(
+    {
+      classification: 'draining',
+      handle: {
+        lease: { generation: 1, id: 2 },
+        worker: { info: { dynamic: false } },
+      },
+      ownedTaskIds: [],
+      previousState: 'ready',
     },
-    ownedTaskIds: [],
-    previousState: 'ready',
-  }, controller.signal)
-  const preparation = recovery.prepare(controller.signal).catch(reason => reason)
+    controller.signal
+  )
+  const preparation = recovery
+    .prepare(controller.signal)
+    .catch(reason => reason)
 
   controller.abort(new Error('prepare timeout'))
   gate.resolve()
@@ -171,25 +199,31 @@ it('T13b: publishes a transition crash without a task separately from task rejec
     { lease: handle.lease, previousState: 'running', taskId },
   ])
 
-  const recovery = policy.reconcile({
-    cause: rawCause,
-    classification: 'faulted',
-    handle,
-    ownedTaskIds: [taskId],
-    previousState: 'ready',
-  }, signal)
-  const firstError = await recovery.prepare(signal)
-  await recovery.restore(signal)
-  await policy.complete({
-    reconciliationValue: firstError,
-    transition: {
+  const recovery = policy.reconcile(
+    {
       cause: rawCause,
       classification: 'faulted',
       handle,
       ownedTaskIds: [taskId],
       previousState: 'ready',
     },
-  }, signal)
+    signal
+  )
+  const firstError = await recovery.prepare(signal)
+  await recovery.restore(signal)
+  await policy.complete(
+    {
+      reconciliationValue: firstError,
+      transition: {
+        cause: rawCause,
+        classification: 'faulted',
+        handle,
+        ownedTaskIds: [taskId],
+        previousState: 'ready',
+      },
+    },
+    signal
+  )
 
   expect(hooks.reject).toHaveBeenCalledOnce()
   const taskError = hooks.reject.mock.calls[0][2]
@@ -201,7 +235,9 @@ it('T13b: publishes a transition crash without a task separately from task rejec
   const published = hooks.publishError.mock.calls[0][0]
   expect(published).toBeInstanceOf(WorkerCrashError)
   expect(published).not.toBe(taskError)
-  expect(published.message).toBe('Worker node crashed: queued transition raw crash')
+  expect(published.message).toBe(
+    'Worker node crashed: queued transition raw crash'
+  )
   expect(published.cause).toBe(rawCause)
   expect(published.workerId).toBe(handle.lease.id)
   expect(published.workerId).toBe(taskError.workerId)
@@ -223,17 +259,18 @@ it('T13h: full pool drain rejects reserved queued work without redistribution', 
   const policy = new WorkerReconciliationPolicy(hooks)
   const worker = { info: { dynamic: false, id: 9 }, usage: { tasks: {} } }
 
-  const recovery = policy.reconcile({
-    classification: 'draining',
-    handle: { lease: { generation: 1, id: 9 }, worker },
-    ownedTaskIds: [taskId],
-    previousState: 'ready',
-  }, signal)
+  const recovery = policy.reconcile(
+    {
+      classification: 'draining',
+      handle: { lease: { generation: 1, id: 9 }, worker },
+      ownedTaskIds: [taskId],
+      previousState: 'ready',
+    },
+    signal
+  )
   await recovery.prepare(signal)
 
-  expect(hooks.reject.mock.calls[0][2]).toBeInstanceOf(
-    WorkerTerminationError
-  )
+  expect(hooks.reject.mock.calls[0][2]).toBeInstanceOf(WorkerTerminationError)
   expect(hooks.reject.mock.calls[0][2].taskId).toBe(taskId)
 })
 
@@ -242,16 +279,21 @@ it('T13i: single worker drain restores reserved queued work through recovery', a
   const lease = { generation: 1, id: 11 }
   const hooks = createHooks()
   hooks.reserve.mockReturnValue([{ lease, previousState: 'queued', taskId }])
-  hooks.restore.mockReturnValue([{ kind: 'committed', state: 'queued', taskId }])
+  hooks.restore.mockReturnValue([
+    { kind: 'committed', state: 'queued', taskId },
+  ])
   const policy = new WorkerReconciliationPolicy(hooks)
   const worker = { info: { dynamic: false, id: 11 }, usage: { tasks: {} } }
 
-  const recovery = policy.reconcile({
-    classification: 'draining',
-    handle: { lease, worker },
-    ownedTaskIds: [taskId],
-    previousState: 'ready',
-  }, signal)
+  const recovery = policy.reconcile(
+    {
+      classification: 'draining',
+      handle: { lease, worker },
+      ownedTaskIds: [taskId],
+      previousState: 'ready',
+    },
+    signal
+  )
   await recovery.prepare(signal)
   await recovery.restore(signal)
   recovery.finalizeResidual(signal)
