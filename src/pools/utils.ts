@@ -1,4 +1,7 @@
-import cluster, { Worker as ClusterWorker } from 'node:cluster'
+import cluster, {
+  type ClusterSettings,
+  Worker as ClusterWorker,
+} from 'node:cluster'
 import { existsSync } from 'node:fs'
 import {
   SHARE_ENV,
@@ -201,6 +204,30 @@ export const checkValidTasksQueueOptions = (
     )
   }
   if (
+    tasksQueueOptions?.tasksFinishedTimeout !== undefined &&
+    !Number.isSafeInteger(tasksQueueOptions.tasksFinishedTimeout)
+  ) {
+    throw new TypeError(
+      'Invalid worker node tasks finished timeout: must be an integer'
+    )
+  }
+  if (
+    tasksQueueOptions?.tasksFinishedTimeout !== undefined &&
+    tasksQueueOptions.tasksFinishedTimeout < 0
+  ) {
+    throw new RangeError(
+      `Invalid worker node tasks finished timeout: ${tasksQueueOptions.tasksFinishedTimeout.toString()} is a negative integer`
+    )
+  }
+  if (
+    tasksQueueOptions?.tasksFinishedTimeout !== undefined &&
+    tasksQueueOptions.tasksFinishedTimeout > 2_147_483_647
+  ) {
+    throw new RangeError(
+      `Invalid worker node tasks finished timeout: ${tasksQueueOptions.tasksFinishedTimeout.toString()} is greater than 2147483647`
+    )
+  }
+  if (
     tasksQueueOptions?.agingFactor != null &&
     typeof tasksQueueOptions.agingFactor !== 'number'
   ) {
@@ -346,10 +373,20 @@ const updateMeasurementStatistics = (
   if (
     measurementRequirements != null &&
     measurementValue != null &&
+    Number.isFinite(measurementValue) &&
     measurementRequirements.aggregate
   ) {
-    measurementStatistics.aggregate =
+    const aggregate =
       (measurementStatistics.aggregate ?? 0) + measurementValue
+    const requiresHistory =
+      measurementRequirements.average || measurementRequirements.median
+    if (
+      !Number.isFinite(aggregate) ||
+      (requiresHistory && !Number.isFinite(Math.fround(measurementValue)))
+    ) {
+      return
+    }
+    measurementStatistics.aggregate = aggregate
     measurementStatistics.minimum = min(
       measurementValue,
       measurementStatistics.minimum ?? Number.POSITIVE_INFINITY
@@ -358,7 +395,7 @@ const updateMeasurementStatistics = (
       measurementValue,
       measurementStatistics.maximum ?? Number.NEGATIVE_INFINITY
     )
-    if (measurementRequirements.average || measurementRequirements.median) {
+    if (requiresHistory) {
       measurementStatistics.history.put(measurementValue)
       if (measurementRequirements.average) {
         measurementStatistics.average = average(
@@ -465,14 +502,32 @@ export const updateEluWorkerUsage = <
     eluTaskStatisticsRequirements,
     message.taskPerformance?.elu?.idle ?? 0
   )
-  if (eluTaskStatisticsRequirements?.aggregate === true) {
-    if (message.taskPerformance?.elu != null) {
-      workerUsage.elu.count = (workerUsage.elu.count ?? 0) + 1
-      workerUsage.elu.utilization =
-        ((workerUsage.elu.utilization ?? 0) * (workerUsage.elu.count - 1) +
-          message.taskPerformance.elu.utilization) /
-        workerUsage.elu.count
+  const utilization = message.taskPerformance?.elu?.utilization
+  if (
+    eluTaskStatisticsRequirements?.aggregate === true &&
+    utilization != null &&
+    Number.isFinite(utilization)
+  ) {
+    const previousCount = workerUsage.elu.count ?? 0
+    const previousUtilization = workerUsage.elu.utilization ?? 0
+    if (
+      !Number.isSafeInteger(previousCount) ||
+      previousCount < 0 ||
+      previousCount >= Number.MAX_SAFE_INTEGER
+    ) {
+      return
     }
+    const count = previousCount + 1
+    const nextUtilization =
+      (previousUtilization < 0) === (utilization < 0)
+        ? previousUtilization + (utilization - previousUtilization) / count
+        : previousUtilization * (previousCount / count) +
+          utilization / count
+    if (!Number.isFinite(nextUtilization)) {
+      return
+    }
+    workerUsage.elu.count = count
+    workerUsage.elu.utilization = nextUtilization
   }
 }
 
@@ -480,10 +535,15 @@ export const updateEluWorkerUsage = <
 export const createWorker = <Worker extends IWorker>(
   type: WorkerType,
   filePath: string,
-  opts: { env?: Record<string, unknown>; workerOptions?: WorkerOptions }
+  opts: {
+    clusterSettings?: ClusterSettings
+    env?: Record<string, unknown>
+    workerOptions?: WorkerOptions
+  }
 ): Worker => {
   switch (type) {
     case WorkerTypes.cluster:
+      cluster.setupPrimary({ ...opts.clusterSettings, exec: filePath })
       return cluster.fork(opts.env) as unknown as Worker
     case WorkerTypes.thread:
       return new ThreadWorker(filePath, {
@@ -552,26 +612,42 @@ export const waitWorkerNodeEvents = async <
   workerNodeEvent: string,
   numberOfEventsToWait: number,
   timeout: number,
-  timeoutRejection = true
+  timeoutRejection = true,
+  signal?: AbortSignal
 ): Promise<number> => {
   return await new Promise<number>((resolve, reject) => {
     let events = 0
-    if (numberOfEventsToWait === 0) {
-      resolve(events)
-      return
+    const cleanup = (): void => {
+      if (timeoutHandle != null) clearTimeout(timeoutHandle)
+      workerNode.off(workerNodeEvent, listener)
+      signal?.removeEventListener('abort', abort)
+    }
+    const abortError = (): Error => signal?.reason instanceof Error
+      ? signal.reason
+      : new Error('Worker node event wait aborted', { cause: signal?.reason })
+    const abort = (): void => {
+      cleanup()
+      reject(abortError())
     }
     const listener = () => {
       ++events
       if (events >= numberOfEventsToWait) {
-        if (timeoutHandle != null) clearTimeout(timeoutHandle)
-        workerNode.off(workerNodeEvent, listener)
+        cleanup()
         resolve(events)
       }
+    }
+    if (numberOfEventsToWait === 0) {
+      resolve(events)
+      return
+    }
+    if (signal?.aborted === true) {
+      reject(abortError())
+      return
     }
     const timeoutHandle =
       timeout >= 0
         ? setTimeout(() => {
-          workerNode.off(workerNodeEvent, listener)
+          cleanup()
           timeoutRejection
             ? reject(
               new Error(
@@ -584,12 +660,14 @@ export const waitWorkerNodeEvents = async <
     switch (workerNodeEvent) {
       case 'backPressure':
       case 'idle':
+      case 'taskExecutionFinished':
       case 'taskFinished':
       case 'terminated':
         workerNode.on(workerNodeEvent, listener)
+        signal?.addEventListener('abort', abort, { once: true })
         break
       default:
-        if (timeoutHandle != null) clearTimeout(timeoutHandle)
+        cleanup()
         reject(new Error('Invalid worker node event'))
     }
   })

@@ -97,7 +97,9 @@ export interface IPool<
     fn: TaskFunction<Data, Response> | TaskFunctionObject<Data, Response>
   ) => Promise<boolean>
   /**
-   * Terminates all workers in this pool.
+   * Terminates all workers in this pool. Calls made during the same destruction
+   * return the shared completion promise. A completed pool can be restarted.
+   * @returns The shared destruction outcome.
    */
   readonly destroy: () => Promise<void>
   /**
@@ -113,7 +115,7 @@ export interface IPool<
    * - `'fullEnd'`: Emitted when the pool is dynamic and the number of workers created has no longer reached the maximum size expected.
    * - `'empty'`: Emitted when the pool is dynamic with a minimum number of workers set to zero and the number of workers has reached the minimum size expected.
    * - `'destroy'`: Emitted when the pool is destroyed.
-   * - `'error'`: Emitted when an uncaught error occurs.
+   * - `'error'`: Emitted once with a `WorkerCrashError` when a worker crashes. Other pool failures are emitted as their corresponding `Error` value.
    * - `'taskError'`: Emitted when an error occurs while executing a task.
    * - `'backPressure'`: Emitted when the number of workers created in the pool has reached the maximum size expected and are back pressured (i.e. their tasks queue is full: queue size \>= maximum queue size).
    * - `'backPressureEnd'`: Emitted when the number of workers created in the pool has reached the maximum size expected and are no longer back pressured (i.e. their tasks queue is no longer full: queue size \< maximum queue size).
@@ -206,7 +208,8 @@ export interface IPool<
     workerChoiceStrategyOptions: WorkerChoiceStrategyOptions
   ) => boolean
   /**
-   * Starts the minimum number of workers in this pool.
+   * Starts the minimum number of workers as one operation. A failed attempt
+   * preserves the original thrown value and leaves the pool restartable.
    */
   readonly start: () => void
   /**
@@ -308,12 +311,15 @@ export interface PoolOptions<Worker extends IWorker> {
    */
   env?: Record<string, unknown>
   /**
-   * A function that will listen for error event on each worker.
+   * A synchronous worker error callback. If it throws during lifecycle
+   * handling, Poolifier completes typed task settlement and cleanup before
+   * rethrowing the original value asynchronously exactly once.
    * @defaultValue `() => {}`
    */
   errorHandler?: ErrorHandler<Worker>
   /**
-   * A function that will listen for exit event on each worker.
+   * A synchronous worker exit callback. See {@link ExitHandler} for raw Node.js
+   * exit arguments and cleanup-before-rethrow behavior.
    * @defaultValue `() => {}`
    */
   exitHandler?: ExitHandler<Worker>
@@ -391,7 +397,10 @@ export interface TasksQueueOptions {
    */
   readonly size?: number
   /**
-   * Queued tasks finished timeout in milliseconds at worker node termination.
+   * Maximum time in milliseconds to wait for in-flight tasks to finish during
+   * worker node termination.
+   * Must be an integer in the range `0..2_147_483_647`. A value of `0`
+   * applies the timeout immediately.
    * @defaultValue 2000
    */
   readonly tasksFinishedTimeout?: number
