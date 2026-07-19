@@ -35,9 +35,8 @@ export type EventHandler<Worker extends IWorker> =
  * Thread workers provide the raw Node.js exit code and omit `signal`. Cluster
  * workers preserve Node.js exit-event semantics: `exitCode` is `null` for a
  * signal exit and `signal` contains the signal name when Node.js provides it.
- * If the callback throws during lifecycle handling, Poolifier completes task
- * settlement and worker or pool cleanup before rethrowing the original value
- * asynchronously exactly once for that invocation.
+ * A throw is rethrown asynchronously exactly once after task settlement and
+ * cleanup complete; it does not replace the typed task rejection.
  * @template Worker - Type of worker.
  */
 export type ExitHandler<Worker extends IWorker> = (
@@ -347,7 +346,7 @@ export interface WorkerInfo {
   continuousStealing: boolean
   /**
    * Crash handled flag.
-   * This flag becomes `true` after the worker's first crash signal.
+   * This flag is set to `true` when the worker crash has been handled.
    */
   readonly crashHandled: boolean
   /**
@@ -383,7 +382,7 @@ export interface WorkerInfo {
   taskFunctionsProperties?: TaskFunctionProperties[]
   /**
    * Terminating flag.
-   * This flag is `true` while voluntary worker termination is in progress.
+   * This flag is set to `true` while pool-initiated worker termination is in progress.
    */
   readonly terminating: boolean
   /**

@@ -60,7 +60,7 @@ This method is available on both pool implementations and returns a promise with
 
 ### `pool.start()`
 
-This method is available on both pool implementations and synchronously starts the minimum number of workers. The pool accepts tasks only after every minimum worker has been registered. If startup fails, every worker created by that attempt is removed from scheduling, termination is tracked, the original thrown value is preserved, and the pool can be started again.
+This method is available on both pool implementations and synchronously starts the minimum number of workers. The pool accepts tasks only after every minimum worker has been registered. If startup fails, every worker created by that attempt is removed from scheduling, the original thrown value is preserved, and the pool can be started again.
 
 Calling `start()` while the pool is starting, running, or being destroyed throws.
 
@@ -70,7 +70,7 @@ This method is available on both pool implementations and terminates every worke
 
 When `pool.destroy()` begins, the pool stops accepting new work. Full-pool destruction does not redistribute queued tasks to other workers. Queued tasks still assigned to workers reject with `WorkerTerminationError`. Destroying one worker outside full-pool destruction first redistributes its queued tasks to ready peer workers. A queued task that cannot be redistributed rejects with `WorkerTerminationError`.
 
-Termination waits up to `tasksFinishedTimeout` for in-flight tasks. A task that settles before the timeout keeps its normal outcome. An in-flight task still pending at the timeout rejects with `WorkerTerminationError`. If a worker emits an error or exits abnormally while it is draining, before Poolifier invokes that worker's physical termination, every still-owned in-flight and queued task rejects with its own `WorkerCrashError`. An exit caused by the physical termination invoked by Poolifier remains pool-initiated and uses `WorkerTerminationError`.
+Termination waits up to `tasksFinishedTimeout` for in-flight tasks. A task that settles before the timeout keeps its normal outcome. An in-flight task still pending at the timeout rejects with `WorkerTerminationError`. If a worker emits an error or exits abnormally while it is draining, every still-owned in-flight and queued task rejects with its own `WorkerCrashError`. An exit caused by the physical termination invoked by Poolifier remains pool-initiated and uses `WorkerTerminationError`.
 
 Idle workers terminated by the pool do not emit `PoolEvents.error`. Dynamic workers terminated by hard idle eviction while a task is still in flight reject that task with `WorkerTerminationError`.
 

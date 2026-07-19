@@ -223,8 +223,7 @@ export class WorkerReconciliationPolicy<
       } catch (reportingError) {
         this.hooks.defer(reportingError, input.handle.lease)
       }
-      // Reject asynchronously so the reconciler records a 'replace' phase
-      // failure after the synchronous publishError above.
+      // Deferred so the synchronous publishError completes before the throw propagates.
       return Promise.resolve().then(() => {
         throw error
       })
