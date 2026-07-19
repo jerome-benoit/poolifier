@@ -86,14 +86,17 @@ export abstract class AbstractWorker<
    */
   protected taskAbortFunctions: Map<TaskUUID, () => void>
 
-  protected get taskFunctions (): Map<string, TaskFunctionObject<Data, Response>> {
+  protected get taskFunctions (): Map<
+    string,
+    TaskFunctionObject<Data, Response>
+  > {
     return this.taskFunctionLayers
   }
 
   /**
    * Task function object(s) processed by the worker when the pool's `execute` method is invoked.
    */
-  private taskFunctionLayers!: TaskFunctionLayers<Data, Response>
+  private readonly taskFunctionLayers: TaskFunctionLayers<Data, Response>
 
   /**
    * Constructs a new poolifier worker.
@@ -111,7 +114,7 @@ export abstract class AbstractWorker<
     if (this.isMain == null) {
       throw new Error('isMain parameter is mandatory')
     }
-    this.checkTaskFunctions(taskFunctions)
+    this.taskFunctionLayers = this.checkTaskFunctions(taskFunctions)
     this.taskAbortFunctions = new Map<TaskUUID, () => void>()
     this.checkWorkerOptions(this.opts)
     if (!this.isMain) {
@@ -405,7 +408,8 @@ export abstract class AbstractWorker<
   protected readonly run = (task: Task<Data>): void => {
     const { abortable, data, name, taskId } = task
     const taskFunctionName = name ?? DEFAULT_TASK_NAME
-    if (!this.taskFunctionLayers.has(taskFunctionName)) {
+    const taskFunctionObject = this.taskFunctionLayers.get(taskFunctionName)
+    if (taskFunctionObject == null) {
       this.sendToMainWorker({
         taskId,
         workerError: {
@@ -420,11 +424,14 @@ export abstract class AbstractWorker<
     }
     let fn: TaskFunction<Data, Response>
     if (abortable === true) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      fn = this.getAbortableTaskFunction(taskFunctionName, taskId!)
+      fn = this.getAbortableTaskFunction(
+        taskFunctionName,
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        taskId!,
+        taskFunctionObject.taskFunction
+      )
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      fn = this.taskFunctionLayers.get(taskFunctionName)!.taskFunction
+      fn = taskFunctionObject.taskFunction
     }
     let settlesAsynchronously = false
     try {
@@ -520,13 +527,14 @@ export abstract class AbstractWorker<
   /**
    * Checks if the `taskFunctions` parameter is passed to the constructor and valid.
    * @param taskFunctions - The task function(s) parameter that should be checked.
+   * @returns The worker task function layers.
    */
   private checkTaskFunctions (
     taskFunctions:
       | TaskFunction<Data, Response>
       | TaskFunctions<Data, Response>
       | undefined
-  ): void {
+  ): TaskFunctionLayers<Data, Response> {
     if (taskFunctions == null) {
       throw new Error('taskFunctions parameter is mandatory')
     }
@@ -539,7 +547,7 @@ export abstract class AbstractWorker<
       const fnObj = { taskFunction: taskFunctions.bind(this) }
       defaultTaskFunctionName =
         typeof taskFunctions.name === 'string' &&
-          taskFunctions.name.trim().length > 0
+        taskFunctions.name.trim().length > 0
           ? taskFunctions.name
           : 'fn1'
       staticTaskFunctions.set(defaultTaskFunctionName, fnObj)
@@ -571,10 +579,7 @@ export abstract class AbstractWorker<
     if (defaultTaskFunctionName == null) {
       throw new Error('Task function default name is not defined')
     }
-    this.taskFunctionLayers = new TaskFunctionLayers(
-      staticTaskFunctions,
-      defaultTaskFunctionName
-    )
+    return new TaskFunctionLayers(staticTaskFunctions, defaultTaskFunctionName)
   }
 
   private checkWorkerOptions (opts: WorkerOptions): void {
@@ -614,11 +619,13 @@ export abstract class AbstractWorker<
    * An abortable promise is built to permit the task to be aborted.
    * @param name - The name of the task.
    * @param taskId - The task id.
+   * @param taskFunction - The task function to run.
    * @returns The abortable task function.
    */
   private getAbortableTaskFunction (
     name: string,
-    taskId: TaskUUID
+    taskId: TaskUUID,
+    taskFunction: TaskFunction<Data, Response>
   ): TaskAsyncFunction<Data, Response> {
     return async (data?: Data): Promise<Response> =>
       await new Promise<Response>(
@@ -626,8 +633,6 @@ export abstract class AbstractWorker<
           this.taskAbortFunctions.set(taskId, () => {
             reject(new AbortError(`Task '${name}' id '${taskId}' aborted`))
           })
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-          const taskFunction = this.taskFunctionLayers.get(name)!.taskFunction
           if (isAsyncFunction(taskFunction)) {
             ;(taskFunction as TaskAsyncFunction<Data, Response>)(data)
               .then(resolve)
