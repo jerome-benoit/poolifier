@@ -36,14 +36,13 @@ import {
 import { KillBehaviors } from '../worker/worker-options.js'
 import { type WorkerCrashError, WorkerTerminationError } from './errors.js'
 import { PoolEventPublisher } from './pool-event-publisher.js'
-import { projectPoolInfo } from './pool-info-projector.js'
 import { collectLifecycleFailures, PoolLifecycle } from './pool-lifecycle.js'
 import {
   buildPoolOptions,
   checkValidWorkerChoiceStrategyOptions,
   mergeTasksQueueOptions,
 } from './pool-options-builder.js'
-import { projectPoolStatistics } from './pool-statistics-projection.js'
+import { projectPoolInfo, projectPoolStatistics } from './pool-projections.js'
 import { PoolTaskEventState } from './pool-task-event-state.js'
 import {
   type IPool,

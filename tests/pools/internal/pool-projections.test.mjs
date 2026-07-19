@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest'
 
-import { projectPoolInfo } from '../../../lib/pools/pool-info-projector.mjs'
 import { buildPoolOptions } from '../../../lib/pools/pool-options-builder.mjs'
-import { projectPoolStatistics } from '../../../lib/pools/pool-statistics-projection.mjs'
+import {
+  projectPoolInfo,
+  projectPoolStatistics,
+} from '../../../lib/pools/pool-projections.mjs'
 import { PoolTypes } from '../../../lib/pools/pool.mjs'
 import { WorkerChoiceStrategies } from '../../../lib/pools/selection-strategies/selection-strategies-types.mjs'
 
