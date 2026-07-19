@@ -1,6 +1,7 @@
 import type { Task, TaskUUID } from '../utility-types.js'
 import type {
   DispatchPermit,
+  SettlementResult,
   TaskSettlement,
   WorkerHandle,
   WorkerLease,
@@ -61,6 +62,10 @@ export class TaskDispatcher<
         }
         return this.reject(taskId, decision.error)
       }
+      default: {
+        const exhaustive: never = decision
+        return exhaustive
+      }
     }
   }
 
@@ -95,7 +100,9 @@ export class TaskDispatcher<
         'dispatching',
         permit.handle.lease
       ).ok
-    ) { return { kind: 'retry' } }
+    ) {
+      return { kind: 'retry' }
+    }
     try {
       this.callbacks.send(permit, record.task, record.task.transferList)
     } catch (error) {
@@ -109,7 +116,9 @@ export class TaskDispatcher<
         'running',
         permit.handle.lease
       ).ok
-    ) { return { kind: 'retry' } }
+    ) {
+      return { kind: 'retry' }
+    }
     return this.registry.get(taskId)?.abortSignal?.aborted === true
       ? this.abort(taskId)
       : { handle: permit.handle, kind: 'committed', state: 'running', taskId }
@@ -139,7 +148,11 @@ export class TaskDispatcher<
     )
     const settlement =
       reservationLease != null
-        ? this.registry.settleReserved(taskId, { error, kind: 'rejected' }, reservationLease)
+        ? this.registry.settleReserved(
+          taskId,
+          { error, kind: 'rejected' },
+          reservationLease
+        )
         : this.registry.settle(taskId, { error, kind: 'rejected' })
     return { handle, kind: 'settled', settlement, taskId }
   }
@@ -148,7 +161,7 @@ export class TaskDispatcher<
     taskId: TaskUUID,
     settlement: TaskSettlement<Response>,
     reservationLease?: WorkerLease
-  ) {
+  ): SettlementResult {
     return reservationLease != null
       ? this.registry.settleReserved(taskId, settlement, reservationLease)
       : this.registry.settle(taskId, settlement)
