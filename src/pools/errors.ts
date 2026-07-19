@@ -28,14 +28,22 @@ export interface WorkerTerminationErrorOptions {
 
 /**
  * Raised when a task promise is rejected because its assigned worker exited
- * unexpectedly (uncaught exception, signal kill, OOM-killer,
- * `process.exit(N)` from worker code, etc.).
+ * abnormally. Abnormal exits include worker errors, signal exits, nonzero exit
+ * codes, and exit code `0` while the worker still owns an in-flight task.
+ *
+ * For cluster workers, `exitCode` and `signal` preserve raw Node.js exit-event
+ * semantics. An uncaught exception's original text remains on worker stderr
+ * when Node.js does not provide it as an error cause.
  */
 export class WorkerCrashError extends Error {
-  public readonly exitCode: null | number
-  public readonly signal: NodeJS.Signals | null
-  public readonly taskId?: TaskUUID
-  public readonly workerId?: number
+  /** Raw Node.js exit code, or `null` when unavailable or signal-terminated. */
+  public declare readonly exitCode: null | number
+  /** Raw Node.js exit signal, or `null` when the exit was not signal-driven. */
+  public declare readonly signal: NodeJS.Signals | null
+  /** Identifier of the task rejected by this error. */
+  public declare readonly taskId?: TaskUUID
+  /** Stable runtime identifier of the worker that owned the task. */
+  public declare readonly workerId?: number
   public constructor (message: string, options: WorkerCrashErrorOptions = {}) {
     super(message, options.cause != null ? { cause: options.cause } : undefined)
     Object.setPrototypeOf(this, new.target.prototype)
@@ -46,21 +54,45 @@ export class WorkerCrashError extends Error {
       value: 'WorkerCrashError',
       writable: false,
     })
-    this.exitCode = options.exitCode ?? null
-    this.signal = options.signal ?? null
-    this.taskId = options.taskId
-    this.workerId = options.workerId
+    Object.defineProperties(this, {
+      exitCode: {
+        configurable: false,
+        enumerable: true,
+        value: options.exitCode ?? null,
+        writable: false,
+      },
+      signal: {
+        configurable: false,
+        enumerable: true,
+        value: options.signal ?? null,
+        writable: false,
+      },
+      taskId: {
+        configurable: false,
+        enumerable: true,
+        value: options.taskId,
+        writable: false,
+      },
+      workerId: {
+        configurable: false,
+        enumerable: true,
+        value: options.workerId,
+        writable: false,
+      },
+    })
   }
 }
 
 /**
- * Raised when a task promise is rejected because the pool initiated worker
- * termination while the task was still in-flight (`pool.destroy()` reached
- * its `tasksFinishedTimeout`) or while a queued task could not be
- * redistributed, including queued tasks rejected during full pool destruction.
+ * Raised when pool-initiated worker termination cannot preserve a task's
+ * normal outcome. This includes an in-flight task that remains pending when
+ * `tasksFinishedTimeout` expires and a queued task that cannot be redistributed.
+ * Full-pool destruction does not redistribute queued tasks.
  */
 export class WorkerTerminationError extends Error {
+  /** Identifier of the task rejected by this error. */
   public readonly taskId?: TaskUUID
+  /** Stable runtime identifier of the worker that owned the task. */
   public readonly workerId?: number
   public constructor (
     message: string,

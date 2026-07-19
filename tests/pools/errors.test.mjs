@@ -1,10 +1,11 @@
+import { spawnSync } from 'node:child_process'
 import { describe, expect, it } from 'vitest'
 
+import { WorkerCrashError, WorkerTerminationError } from '../../lib/index.mjs'
 import {
   WorkerCrashError as WorkerCrashErrorCjs,
   WorkerTerminationError as WorkerTerminationErrorCjs,
-} from '../../lib/index.cjs'
-import { WorkerCrashError, WorkerTerminationError } from '../../lib/index.mjs'
+} from '../../lib/pools/errors.cjs'
 
 describe('Pool error classes test suite', () => {
   describe('WorkerCrashError', () => {
@@ -63,11 +64,7 @@ describe('Pool error classes test suite', () => {
       // Object.assign on a non-writable name property: silently no-op
       // (sloppy mode) or TypeError (strict mode). Both are acceptable —
       // the discrimination contract holds either way.
-      try {
-        Object.assign(e, { name: 'fake' })
-      } catch {
-        /* empty */
-      }
+      expect(() => Object.assign(e, { name: 'fake' })).toThrow(TypeError)
       expect(e.name).toBe('WorkerCrashError')
     })
     it('resists name tampering (defineProperty attempt)', () => {
@@ -123,6 +120,25 @@ describe('Pool error classes test suite', () => {
   })
 
   describe('Dual-package (CJS / ESM) interop', () => {
+    it('loads error classes from the public CJS root', () => {
+      const child = spawnSync(
+        process.execPath,
+        [
+          '--input-type=commonjs',
+          '--eval',
+          "const { WorkerCrashError, WorkerTerminationError } = require('./lib/index.cjs'); process.stdout.write(JSON.stringify({ crash: new WorkerCrashError('c').name, termination: new WorkerTerminationError('t').name }))",
+        ],
+        { cwd: process.cwd(), encoding: 'utf8' }
+      )
+      expect(child.error).toBeUndefined()
+      expect(child.signal).toBeNull()
+      expect(child.status).toBe(0)
+      expect(child.stderr).toBe('')
+      expect(JSON.parse(child.stdout)).toStrictEqual({
+        crash: 'WorkerCrashError',
+        termination: 'WorkerTerminationError',
+      })
+    })
     it('discriminates via error.name across bundles', () => {
       const eMjs = new WorkerCrashError('boom')
       const eCjs = new WorkerCrashErrorCjs('boom')

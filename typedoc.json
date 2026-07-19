@@ -9,7 +9,10 @@
   "treatWarningsAsErrors": true,
   "excludeInternal": true,
   "intentionallyNotExported": [
+    "TaskRegistry",
     "WorkerCrashErrorOptions",
+    "WorkerHandle",
+    "WorkerLifecycleCoordinator",
     "WorkerTerminationErrorOptions"
   ],
   "externalSymbolLinkMappings": {
