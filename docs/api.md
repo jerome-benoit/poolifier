@@ -9,12 +9,14 @@
   - [`pool.mapExecute(data, name, abortSignals, transferList)`](#poolmapexecutedata-name-abortsignals-transferlist)
   - [`pool.start()`](#poolstart)
   - [`pool.destroy()`](#pooldestroy)
+  - [Worker crash and termination contracts](#worker-crash-and-termination-contracts)
   - [`pool.hasTaskFunction(name)`](#poolhastaskfunctionname)
   - [`pool.addTaskFunction(name, fn)`](#pooladdtaskfunctionname-fn)
   - [`pool.removeTaskFunction(name)`](#poolremovetaskfunctionname)
   - [`pool.listTaskFunctionsProperties()`](#poollisttaskfunctionsproperties)
   - [`pool.setDefaultTaskFunction(name)`](#poolsetdefaulttaskfunctionname)
   - [Pool options](#pool-options)
+- [Major release breaking changes](#major-release-breaking-changes)
 - [Worker](#worker)
   - [`class YourWorker extends ThreadWorker/ClusterWorker`](#class-yourworker-extends-threadworkerclusterworker)
     - [`YourWorker.hasTaskFunction(name)`](#yourworkerhastaskfunctionname)
@@ -58,38 +60,38 @@ This method is available on both pool implementations and returns a promise with
 
 ### `pool.start()`
 
-This method is available on both pool implementations and will start the minimum number of workers.
+This method is available on both pool implementations and synchronously starts the minimum number of workers. The pool accepts tasks only after every minimum worker has been registered. If startup fails, every worker created by that attempt is removed from scheduling, termination is tracked, the original thrown value is preserved, and the pool can be started again.
+
+Calling `start()` while the pool is starting, running, or being destroyed throws. Calling it after a completed `destroy()` starts the pool again.
 
 ### `pool.destroy()`
 
-This method is available on both pool implementations and will call the terminate method on each worker. Concurrent calls all resolve when termination completes; calling `destroy()` after completion throws.
+This method is available on both pool implementations and terminates every worker. Destruction stops new task submission immediately. Calls that overlap the same destruction return the same promise and therefore share its fulfillment or rejection. A call made after destruction has completed returns a rejected promise. A successfully destroyed pool can subsequently be restarted with `start()`.
 
-When `pool.destroy()` begins, the pool stops accepting new work and does not redistribute queued tasks to other workers. Queued tasks still assigned to workers reject with a `WorkerTerminationError`.
+When `pool.destroy()` begins, the pool stops accepting new work. Full-pool destruction does not redistribute queued tasks to other workers. Queued tasks still assigned to workers reject with `WorkerTerminationError`. Destroying one worker outside full-pool destruction first redistributes its queued tasks to ready peer workers. A queued task that cannot be redistributed rejects with `WorkerTerminationError`.
 
-In-flight tasks that do not finish within `tasksFinishedTimeout` (default `2000` ms; `tasksQueueOptions.tasksFinishedTimeout`) are rejected with a `WorkerTerminationError`. If the worker exits unexpectedly during destroy teardown, in-flight tasks reject with a `WorkerCrashError`. Attach a `.catch` to every `pool.execute()` you want to drain quietly; otherwise an unhandled rejection will be logged.
+Termination waits up to `tasksFinishedTimeout` for in-flight tasks. A task that settles before the timeout keeps its normal outcome. An in-flight task still pending at the timeout rejects with `WorkerTerminationError`. If a worker emits an error or exits abnormally while it is draining, before Poolifier invokes that worker's physical termination, every still-owned in-flight and queued task rejects with its own `WorkerCrashError`. An exit caused by the physical termination invoked by Poolifier remains pool-initiated and uses `WorkerTerminationError`.
 
-Crash paths observed during destroy teardown are coalesced per worker and emit a typed `PoolEvents.error` when the pool can build one, preferring an in-flight `WorkerCrashError` over queued `WorkerTerminationError` payloads. Idle workers terminated voluntarily emit nothing.
+Idle workers terminated by the pool do not emit `PoolEvents.error`. Dynamic workers terminated by hard idle eviction while a task is still in flight reject that task with `WorkerTerminationError`.
 
-Dynamic workers self-evicting via `maxInactiveTime` while a task is still executing reject the task with `WorkerTerminationError` through the same path.
+### Worker crash and termination contracts
 
-### Error handling on worker crash
+Every task promise affected by a worker crash or pool-initiated termination settles. The error classes are exported from `poolifier`:
 
-The pool rejects every in-flight task assigned to a worker that exits unexpectedly:
+- `WorkerCrashError` reports an unexpected worker exit. Its `name` is the non-writable string `WorkerCrashError`. `workerId` identifies the runtime worker, `taskId` identifies the rejected task, `exitCode` is the raw nullable exit code, `signal` is the raw nullable exit signal, and `cause` contains the original error when Node.js supplies one.
+- `WorkerTerminationError` reports pool-initiated termination before a task could settle. Its `name` is the non-writable string `WorkerTerminationError`. Pool-generated errors carry the rejected task's `taskId` and runtime `workerId`; they do not attach raw worker termination failures as `cause`. A `cause` remains available when explicitly supplied during direct construction. Raw worker termination failures surface separately through pool error handling.
 
-- uncaught exception in the worker;
-- `process.exit(N)` from worker code (any non-zero `N`, or `0` while a task is in-flight);
-- signal kills (SIGKILL, SIGSEGV) and OOM-killer events on cluster workers;
-- crashes during worker startup.
+Use `error.name` to discriminate these errors when code can receive both the CommonJS and ESM package builds. An object created by one build is not an `instanceof` the class from the other build.
 
-Queued tasks assigned to the crashed worker are redistributed to ready peer workers when possible. Queued tasks that cannot be redistributed reject with `WorkerCrashError`.
+An exit is abnormal when the worker emits an error, exits with a nonzero code, exits because of a signal, or exits with code `0` while it still owns an in-flight task. All in-flight tasks assigned to that worker reject with `WorkerCrashError`. Queued tasks are redistributed to ready peer workers when possible; any queued task that cannot be redistributed also rejects with `WorkerCrashError`.
 
-The rejection is a `WorkerCrashError` with `cause`, `exitCode`, `signal`, `workerId`, and `taskId`. `taskId` is set for each rejected queued or in-flight task. The pool emits `PoolEvents.error` with a representative `WorkerCrashError` payload for an observed crash; duplicate worker error and exit paths are coalesced.
+For cluster workers, `exitCode` and `signal` preserve Node.js exit-event semantics. A signal exit has `exitCode: null` and the signal name when Node.js provides it. A normal or nonzero code exit has `signal: null`. No synthetic code or signal is substituted. An uncaught exception in a cluster worker is reported through its exit status; the original throw text remains on worker stderr and is not added to `cause`.
 
-If a `PoolEvents.error` listener throws, the listener exception is re-thrown asynchronously with `queueMicrotask` after the emit call returns. It does not synchronously abort crash or destroy cleanup and is not swallowed.
+`restartWorkerOnError` controls replacement after an abnormal exit. When it is `true`, the pool replaces an abnormally exited worker as needed to restore its minimum size. When it is `false`, the pool does not replace that worker. A clean code `0` exit with no in-flight task is not an error and replenishes the pool minimum regardless of this option. A code `0` exit with an in-flight task is abnormal and follows the option.
 
-Discriminate `WorkerCrashError` and `WorkerTerminationError` via `error.name` — this works across CJS and ESM imports of the package.
+For an observed crash, the `PoolEvents.error` listener receives exactly one taskless `WorkerCrashError` as the raw worker authority instead of reusing a task rejection. The original Node.js error is available through `cause` when Node.js supplies it. Each affected task promise receives a distinct task-scoped `WorkerCrashError`. Raw crash details are retained for that task only when the worker owns exactly one active task; queued-only work, no active work, and multiple active tasks receive sanitized task errors. Duplicate error and exit notifications for the same worker reuse one reconciliation and do not settle a task twice. A spontaneous crash observed while the worker is draining promotes that reconciliation to a crash without starting another reconciliation. Ordinary crashes outside pool destruction continue to redistribute recoverable queued tasks to ready peer workers.
 
-> Cluster note: when a cluster worker throws, the original throw text is only available on the worker's stderr — it does not propagate to `error.cause`. Use `error.exitCode` and `error.signal` to inspect how the worker exited.
+The user `errorHandler`, `exitHandler`, and `PoolEvents.error` callbacks are synchronous contracts. If one throws during crash or termination handling, Poolifier first settles affected task promises and completes worker removal, replacement decisions, or full-pool destruction. It then rethrows the original value asynchronously exactly once for that callback invocation. The callback failure is not swallowed and does not replace the typed task rejection.
 
 ### `pool.hasTaskFunction(name)`
 
@@ -178,7 +180,7 @@ An object with these properties:
   - `taskStealing` (optional) - Task stealing enablement on idle.
   - `tasksStealingOnBackPressure` (optional) - Tasks stealing enablement under back pressure.
   - `tasksStealingRatio` (optional) - The ratio of worker nodes that can steal tasks from another worker node. It must be a number between 0 and 1.
-  - `tasksFinishedTimeout` (optional) - Queued tasks finished timeout in milliseconds at worker termination.
+  - `tasksFinishedTimeout` (optional) - Time in milliseconds to wait for in-flight tasks at worker termination. It must be an integer in `0..2_147_483_647`. A value of `0` applies the timeout immediately.
   - `agingFactor` (optional) - Controls the priority queue anti-starvation aging rate (priority points per millisecond). It must be a non-negative number.
   - `loadExponent` (optional) - Controls load-based aging adjustment exponent. It must be a positive number.
 
@@ -189,6 +191,15 @@ An object with these properties:
 - `env` (optional) - An object with the environment variables to pass to worker. See [cluster](https://nodejs.org/api/cluster.html#cluster_cluster_fork_env) for more details.
 
 - `settings` (optional) - An object with the cluster settings. See [cluster](https://nodejs.org/api/cluster.html#cluster_cluster_settings) for more details.
+
+## Major release breaking changes
+
+- `ExitHandler` now receives `(exitCode: number | null, signal?: NodeJS.Signals | null)`. Thread workers pass the raw exit code. Cluster workers preserve the raw Node.js code and signal values.
+- `PromiseResponseWrapper.workerId` replaces `PromiseResponseWrapper.workerNodeKey`. `workerId` is the stable runtime worker identity bound to the in-flight task.
+- `TaskUUID`, `WorkerCrashError`, and `WorkerTerminationError` are public exports. Task-related error metadata uses `TaskUUID` for `taskId`.
+- `IWorkerNode` now exposes the typed `prependOnceWorkerEventHandler` method.
+- `WorkerInfo` now exposes the `crashHandled` and `terminating` lifecycle flags.
+- `WorkerInfo.staticTaskFunctionsProperties` was removed. `taskFunctionsProperties` remains the public task-function metadata surface.
 
 ## Worker
 
