@@ -2,6 +2,8 @@ import type { MessageValue, Task } from '../utility-types.js'
 import type { SettlementResult, WorkerLease } from './lifecycle-types.js'
 import type { WorkerUsage } from './worker.js'
 
+import { hasMultipleTaskFunctions } from './utils.js'
+
 export interface AccountingWorkerNode {
   getTaskFunctionWorkerUsage: (name: string) => undefined | WorkerUsage
   readonly info: Readonly<{ taskFunctionsProperties?: readonly unknown[] }>
@@ -174,9 +176,11 @@ export class TaskUsageAccounting<
       taskName == null ||
       !(
         this.callbacks.shouldUpdateTaskFunctionUsage?.(workerNodeKey) ??
-        (worker.info.taskFunctionsProperties?.length ?? 0) > 2
+        hasMultipleTaskFunctions(worker.info.taskFunctionsProperties)
       )
-    ) { return }
+    ) {
+      return
+    }
     const usage = worker.getTaskFunctionWorkerUsage(taskName)
     if (usage != null) update(usage)
   }

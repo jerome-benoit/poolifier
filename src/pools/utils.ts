@@ -44,6 +44,15 @@ export const DEFAULT_MEASUREMENT_STATISTICS_REQUIREMENTS: Readonly<MeasurementSt
     median: false,
   })
 
+/**
+ * Whether the worker task functions properties expose more than the default task function.
+ * @param taskFunctionsProperties - Worker task functions properties.
+ * @returns `true` when multiple task functions are registered.
+ */
+export const hasMultipleTaskFunctions = (
+  taskFunctionsProperties: readonly unknown[] | undefined
+): boolean => (taskFunctionsProperties?.length ?? 0) > 2
+
 export const getDefaultTasksQueueOptions = (
   poolMaxSize: number
 ): Required<Readonly<TasksQueueOptions>> => {
@@ -376,8 +385,7 @@ const updateMeasurementStatistics = (
     Number.isFinite(measurementValue) &&
     measurementRequirements.aggregate
   ) {
-    const aggregate =
-      (measurementStatistics.aggregate ?? 0) + measurementValue
+    const aggregate = (measurementStatistics.aggregate ?? 0) + measurementValue
     const requiresHistory =
       measurementRequirements.average || measurementRequirements.median
     if (
@@ -518,11 +526,12 @@ export const updateEluWorkerUsage = <
       return
     }
     const count = previousCount + 1
+    const previousNegative = previousUtilization < 0
+    const utilizationNegative = utilization < 0
     const nextUtilization =
-      (previousUtilization < 0) === (utilization < 0)
+      previousNegative === utilizationNegative
         ? previousUtilization + (utilization - previousUtilization) / count
-        : previousUtilization * (previousCount / count) +
-          utilization / count
+        : previousUtilization * (previousCount / count) + utilization / count
     if (!Number.isFinite(nextUtilization)) {
       return
     }
@@ -622,9 +631,10 @@ export const waitWorkerNodeEvents = async <
       workerNode.off(workerNodeEvent, listener)
       signal?.removeEventListener('abort', abort)
     }
-    const abortError = (): Error => signal?.reason instanceof Error
-      ? signal.reason
-      : new Error('Worker node event wait aborted', { cause: signal?.reason })
+    const abortError = (): Error =>
+      signal?.reason instanceof Error
+        ? signal.reason
+        : new Error('Worker node event wait aborted', { cause: signal?.reason })
     const abort = (): void => {
       cleanup()
       reject(abortError())

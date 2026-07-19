@@ -79,6 +79,7 @@ import {
   checkValidWorkerChoiceStrategy,
   checkValidWorkerNodeKeys,
   getDefaultTasksQueueOptions,
+  hasMultipleTaskFunctions,
   updateEluWorkerUsage,
   updateRunTimeWorkerUsage,
   updateWaitTimeWorkerUsage,
@@ -2187,8 +2188,7 @@ export abstract class AbstractPool<
     const workerInfo = this.getWorkerInfo(workerNodeKey)
     return (
       workerInfo != null &&
-      Array.isArray(workerInfo.taskFunctionsProperties) &&
-      workerInfo.taskFunctionsProperties.length > 2
+      hasMultipleTaskFunctions(workerInfo.taskFunctionsProperties)
     )
   }
 
