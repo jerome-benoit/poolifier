@@ -107,8 +107,10 @@ export const average = (dataSet: number[]): number => {
     const number = dataSet[index]
     const count = index + 1
     const previousCount = count - 1
+    const fallbackNegative = fallbackAverage < 0
+    const numberNegative = number < 0
     fallbackAverage =
-      (fallbackAverage < 0) === (number < 0)
+      fallbackNegative === numberNegative
         ? fallbackAverage + (number - fallbackAverage) / count
         : fallbackAverage * (previousCount / count) + number / count
   }
