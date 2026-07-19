@@ -5,17 +5,14 @@ import type {
   WorkerLease,
 } from './lifecycle-types.js'
 
-import {
-  type WorkerCrashError,
-  WorkerTerminationError,
-} from './errors.js'
+import { type WorkerCrashError, WorkerTerminationError } from './errors.js'
 import { TerminalSignalAggregator } from './terminal-signal-aggregator.js'
 import { WorkerLifecycleCoordinator } from './worker-lifecycle-coordinator.js'
 import {
   buildWorkerCrashError,
   buildWorkerTaskCrashError,
   makeUnexpectedExitError,
-} from './worker-reconciliation-errors.js'
+} from './worker-reconciliation-error-builders.js'
 import { waitForWorkerTransportDrain } from './worker-transport-drain.js'
 
 interface TerminalWorker extends LifecycleWorker {
@@ -54,7 +51,8 @@ export class WorkerTerminalController<Worker extends TerminalWorker> {
 
   public error (handle: WorkerHandle<Worker>, cause: Error): void {
     const classification = this.coordinator.classification(handle)
-    const promoted = classification === 'draining' || classification === 'exited'
+    const promoted =
+      classification === 'draining' || classification === 'exited'
     const crashError = this.#rejectCrash(
       handle,
       buildWorkerCrashError(cause, handle.worker.info.id)
@@ -76,7 +74,8 @@ export class WorkerTerminalController<Worker extends TerminalWorker> {
       return
     }
     const classification = this.coordinator.classification(handle)
-    const promoted = classification === 'draining' || classification === 'exited'
+    const promoted =
+      classification === 'draining' || classification === 'exited'
     const abnormal = this.callbacks.isAbnormalExit(
       exitCode,
       signal,
@@ -100,11 +99,7 @@ export class WorkerTerminalController<Worker extends TerminalWorker> {
       }
       this.callbacks.track(
         handle.lease,
-        this.#aggregator(handle).exit(
-          exit,
-          true,
-          promoted ? crashError : exit
-        )
+        this.#aggregator(handle).exit(exit, true, promoted ? crashError : exit)
       )
       return
     }

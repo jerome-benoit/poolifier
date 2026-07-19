@@ -17,13 +17,16 @@ import {
   buildWorkerReconciliationError,
   buildWorkerTaskCrashError,
   makeUnexpectedExitError,
-} from './worker-reconciliation-errors.js'
+} from './worker-reconciliation-error-builders.js'
 import { WorkerTaskRecovery } from './worker-task-recovery.js'
 
 export interface WorkerReconciliationPolicyHooks<
   WorkerNode extends LifecycleWorker
 > {
-  readonly apply: (result: ScheduleResult<WorkerNode>, owner?: WorkerLease) => void
+  readonly apply: (
+    result: ScheduleResult<WorkerNode>,
+    owner?: WorkerLease
+  ) => void
   readonly createDynamic: () => void
   readonly defer: (error: unknown, owner: WorkerLease) => void
   readonly detachQueued: (
@@ -66,7 +69,9 @@ export class WorkerReconciliationPolicy<
   Data,
   WorkerNode extends IWorkerNode<Worker, Data> = IWorkerNode<Worker, Data>
 > {
-  public constructor (private readonly hooks: WorkerReconciliationPolicyHooks<WorkerNode>) {}
+  public constructor (
+    private readonly hooks: WorkerReconciliationPolicyHooks<WorkerNode>
+  ) {}
 
   public buildCrashError (
     cause: Error,
@@ -121,60 +126,75 @@ export class WorkerReconciliationPolicy<
     const { handle } = input
     const reserved = this.hooks.reserve(input.ownedTaskIds, handle.lease)
     const { attributedTaskId } = getWorkerCrashAttribution(reserved)
-    return new WorkerTaskRecovery(input, reserved, {
-      apply: result => {
-        this.hooks.apply(result, handle.lease)
-      },
-      error: taskId => buildWorkerReconciliationError(input, taskId, taskId === attributedTaskId),
-      finalize: () => { this.hooks.executionFinished(handle.lease) },
-      prepare: async phaseSignal => {
-        phaseSignal.throwIfAborted()
-        if (
-          input.classification === 'faulted' &&
-          input.previousState === 'awaitingReady' &&
-          input.ownedTaskIds.length === 0 &&
-          !handle.worker.info.dynamic
-        ) {
-          this.hooks.rollbackStartup(handle.worker)
-        }
-        this.hooks.detachQueued(handle)
-        this.hooks.drainPhysical(handle)
-        this.hooks.taskDequeued(handle.lease)
-        if (input.classification === 'draining') {
-          await this.hooks.waitForDrain(handle.worker, phaseSignal)
-          phaseSignal.throwIfAborted()
-        }
-      },
-      reject: (reservation, error) => this.hooks.reject(
-        reservation.taskId,
-        handle.worker,
-        error instanceof WorkerCrashError || error instanceof WorkerTerminationError
-          ? error
-          : buildWorkerReconciliationError(
+    return new WorkerTaskRecovery(
+      input,
+      reserved,
+      {
+        apply: result => {
+          this.hooks.apply(result, handle.lease)
+        },
+        error: taskId =>
+          buildWorkerReconciliationError(
             input,
-            reservation.taskId,
-            reservation.taskId === attributedTaskId
+            taskId,
+            taskId === attributedTaskId
           ),
-        handle.lease
-      ),
-      restore: (reservations, error) => this.hooks.restore(
-        reservations,
-        taskId => {
-          const failure = error(taskId)
-          return failure instanceof WorkerCrashError ||
-            failure instanceof WorkerTerminationError
-            ? failure
-            : new WorkerTerminationError(failure instanceof Error
-              ? failure.message
-              : 'Worker task could not be restored', {
-              taskId,
-              workerId: handle.lease.id,
-            })
-        }
-      ),
-    }, input.classification === 'draining'
-      ? this.hooks.tasksFinishedTimeout()
-      : undefined)
+        finalize: () => {
+          this.hooks.executionFinished(handle.lease)
+        },
+        prepare: async phaseSignal => {
+          phaseSignal.throwIfAborted()
+          if (
+            input.classification === 'faulted' &&
+            input.previousState === 'awaitingReady' &&
+            input.ownedTaskIds.length === 0 &&
+            !handle.worker.info.dynamic
+          ) {
+            this.hooks.rollbackStartup(handle.worker)
+          }
+          this.hooks.detachQueued(handle)
+          this.hooks.drainPhysical(handle)
+          this.hooks.taskDequeued(handle.lease)
+          if (input.classification === 'draining') {
+            await this.hooks.waitForDrain(handle.worker, phaseSignal)
+            phaseSignal.throwIfAborted()
+          }
+        },
+        reject: (reservation, error) =>
+          this.hooks.reject(
+            reservation.taskId,
+            handle.worker,
+            error instanceof WorkerCrashError ||
+              error instanceof WorkerTerminationError
+              ? error
+              : buildWorkerReconciliationError(
+                input,
+                reservation.taskId,
+                reservation.taskId === attributedTaskId
+              ),
+            handle.lease
+          ),
+        restore: (reservations, error) =>
+          this.hooks.restore(reservations, taskId => {
+            const failure = error(taskId)
+            return failure instanceof WorkerCrashError ||
+              failure instanceof WorkerTerminationError
+              ? failure
+              : new WorkerTerminationError(
+                failure instanceof Error
+                  ? failure.message
+                  : 'Worker task could not be restored',
+                {
+                  taskId,
+                  workerId: handle.lease.id,
+                }
+              )
+          }),
+      },
+      input.classification === 'draining'
+        ? this.hooks.tasksFinishedTimeout()
+        : undefined
+    )
   }
 
   public replace (
@@ -203,7 +223,9 @@ export class WorkerReconciliationPolicy<
       } catch (reportingError) {
         this.hooks.defer(reportingError, input.handle.lease)
       }
-      return Promise.resolve().then(() => { throw error })
+      return Promise.resolve().then(() => {
+        throw error
+      })
     }
   }
 
@@ -235,24 +257,25 @@ export class WorkerReconciliationPolicy<
   ): void {
     const { transition } = input
     if (transition.classification === 'faulted') {
-      const crashError = transition.cause instanceof WorkerCrashError
-        ? transition.cause
-        : transition.cause instanceof Error
-          ? new WorkerCrashError(
-            `Worker node crashed: ${transition.cause.message}`,
-            {
-              cause: transition.cause,
-              exitCode: transition.exit?.code ?? null,
-              signal: transition.exit?.signal ?? null,
-              workerId: transition.handle.worker.info.id,
-            }
-          )
-          : this.makeUnexpectedExitError(
-            'lifecycle',
-            transition.exit?.code ?? null,
-            transition.exit?.signal,
-            transition.handle.worker.info.id
-          )
+      const crashError =
+        transition.cause instanceof WorkerCrashError
+          ? transition.cause
+          : transition.cause instanceof Error
+            ? new WorkerCrashError(
+                `Worker node crashed: ${transition.cause.message}`,
+                {
+                  cause: transition.cause,
+                  exitCode: transition.exit?.code ?? null,
+                  signal: transition.exit?.signal ?? null,
+                  workerId: transition.handle.worker.info.id,
+                }
+            )
+            : this.makeUnexpectedExitError(
+              'lifecycle',
+              transition.exit?.code ?? null,
+              transition.exit?.signal,
+              transition.handle.worker.info.id
+            )
       this.hooks.publishError(crashError, transition.handle.lease)
     } else if (firstError != null) {
       this.hooks.publishError(firstError, transition.handle.lease)
