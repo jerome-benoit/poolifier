@@ -40,10 +40,7 @@ export interface TaskStealingHooks<Worker, Data> {
     handle: WorkerHandle<Worker>,
     previousTaskName?: string
   ) => void
-  readonly schedule: (
-    callback: () => void,
-    delay: number
-  ) => StealTimer
+  readonly schedule: (callback: () => void, delay: number) => StealTimer
   readonly sequentiallyStolen: (handle: WorkerHandle<Worker>) => number
   readonly updateSequence: (
     handle: WorkerHandle<Worker>,
@@ -78,7 +75,9 @@ export class TaskStealingController<
           !source.worker.info.backPressure ||
           !this.hooks.canSteal() ||
           this.ratioReached()
-        ) { return }
+        ) {
+          return
+        }
         const sourceSize = source.worker.tasksQueueSize()
         if (sourceSize <= 1) return
         const destinations = this.hooks
@@ -129,7 +128,9 @@ export class TaskStealingController<
     if (
       !info.continuousStealing &&
       (!this.hooks.canSteal() || this.ratioReached())
-    ) { return }
+    ) {
+      return
+    }
     if (info.continuousStealing && !this.hooks.isIdle(destination)) {
       this.terminateSequence(destination, previousTaskName)
       return
@@ -138,16 +139,16 @@ export class TaskStealingController<
       this.#lastStolenTaskNames.get(destination) ?? previousTaskName
     try {
       info.continuousStealing = true
-      const source = this.hooks
-        .handles()
-        .filter(
-          handle => handle !== destination && handle.worker.tasksQueueSize() > 0
-        )
-        .sort(
-          (left, right) =>
-            right.worker.tasksQueueSize() - left.worker.tasksQueueSize()
-        )
-        .at(0)
+      let source: undefined | WorkerHandle<Worker>
+      let sourceSize = 0
+      for (const handle of this.hooks.handles()) {
+        if (handle === destination) continue
+        const size = handle.worker.tasksQueueSize()
+        if (size > sourceSize) {
+          source = handle
+          sourceSize = size
+        }
+      }
       const stolenTaskName =
         source == null ? undefined : this.steal(source, destination)
       this.hooks.updateSequence(
@@ -167,10 +168,7 @@ export class TaskStealingController<
         if (this.#timers.get(destination) !== timer) return
         this.#timers.delete(destination)
         if (this.isCurrent(destination)) {
-          this.idle(
-            destination,
-            stolenTaskName ?? retainedPreviousTaskName
-          )
+          this.idle(destination, stolenTaskName ?? retainedPreviousTaskName)
         }
       }, delay)
       this.#timers.set(destination, timer)
@@ -223,7 +221,9 @@ export class TaskStealingController<
       destinationInfo.stolen ||
       destinationInfo.stealing ||
       destinationInfo.queuedTaskAbortion
-    ) { return }
+    ) {
+      return
+    }
     destinationInfo.stealing = true
     sourceInfo.stolen = true
     try {
