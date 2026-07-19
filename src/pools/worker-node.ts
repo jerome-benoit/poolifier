@@ -2,16 +2,18 @@ import { EventEmitter } from 'node:events'
 import { MessageChannel } from 'node:worker_threads'
 
 import type { Task } from '../utility-types.js'
-import type { WorkerTransportDrain } from './worker-transport-drain.js'
 
 import { PriorityQueue } from '../queues/priority-queue.js'
-import { TransportDrainBarrier } from './transport-drain-barrier.js'
 import {
   checkWorkerNodeArguments,
   createWorker,
   initWorkerInfo,
 } from './utils.js'
 import { terminateWorker } from './worker-termination.js'
+import {
+  TransportDrainBarrier,
+  type WorkerTransportDrain,
+} from './worker-transport-drain.js'
 import { WorkerUsageStore } from './worker-usage-store.js'
 import {
   type EventHandler,
