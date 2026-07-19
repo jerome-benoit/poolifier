@@ -41,7 +41,7 @@ export class TransportDrainBarrier {
 }
 
 /**
- * Waits for the worker transport drain when the worker exposes that capability.
+ * Waits for the worker's transport to drain, if the worker supports it.
  * @param worker - Worker to drain.
  */
 export async function waitForWorkerTransportDrain (

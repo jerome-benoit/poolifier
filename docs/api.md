@@ -139,7 +139,7 @@ An object with these properties:
   Default: `() => {}`
 - `errorHandler` (optional) - A function that will listen for error event on each worker.  
   Default: `() => {}`
-- `exitHandler` (optional) - A function that will listen for exit event on each worker. The signature is `(exitCode: number | null, signal?: NodeJS.Signals | null) => void`; thread workers pass only `exitCode`, while cluster workers also pass `signal` when the worker was killed by a signal.
+- `exitHandler` (optional) - A function that will listen for exit event on each worker. The signature is `(exitCode: number | null, signal?: NodeJS.Signals | null) => void`; thread workers provide `exitCode` and omit `signal`, while cluster workers set `exitCode` to `null` for a signal exit and provide `signal` when Node.js does.
   Default: `() => {}`
 
 - `workerChoiceStrategy` (optional) - The default worker choice strategy to use in this pool:

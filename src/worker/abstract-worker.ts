@@ -655,7 +655,7 @@ export abstract class AbstractWorker<
   /**
    * Settles the given task function promise.
    * @param result - Task function promise or thenable.
-   * @param task - Input data for the task function.
+   * @param task - The task being executed.
    * @param taskPerformance - Task performance measurement started before invocation.
    */
   private readonly settleTaskPromise = (
