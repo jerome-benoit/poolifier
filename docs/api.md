@@ -62,7 +62,7 @@ This method is available on both pool implementations and returns a promise with
 
 This method is available on both pool implementations and synchronously starts the minimum number of workers. The pool accepts tasks only after every minimum worker has been registered. If startup fails, every worker created by that attempt is removed from scheduling, termination is tracked, the original thrown value is preserved, and the pool can be started again.
 
-Calling `start()` while the pool is starting, running, or being destroyed throws. Calling it after a completed `destroy()` starts the pool again.
+Calling `start()` while the pool is starting, running, or being destroyed throws.
 
 ### `pool.destroy()`
 
@@ -89,9 +89,9 @@ For cluster workers, `exitCode` and `signal` preserve Node.js exit-event semanti
 
 `restartWorkerOnError` controls replacement after an abnormal exit. When it is `true`, the pool replaces an abnormally exited worker as needed to restore its minimum size. When it is `false`, the pool does not replace that worker. A clean code `0` exit with no in-flight task is not an error and replenishes the pool minimum regardless of this option. A code `0` exit with an in-flight task is abnormal and follows the option.
 
-For an observed crash, the `PoolEvents.error` listener receives exactly one taskless `WorkerCrashError` as the raw worker authority instead of reusing a task rejection. The original Node.js error is available through `cause` when Node.js supplies it. Each affected task promise receives a distinct task-scoped `WorkerCrashError`. Raw crash details are retained for that task only when the worker owns exactly one active task; queued-only work, no active work, and multiple active tasks receive sanitized task errors. Duplicate error and exit notifications for the same worker reuse one reconciliation and do not settle a task twice. A spontaneous crash observed while the worker is draining promotes that reconciliation to a crash without starting another reconciliation. Ordinary crashes outside pool destruction continue to redistribute recoverable queued tasks to ready peer workers.
+For an observed crash, the `PoolEvents.error` listener receives one `WorkerCrashError` with no `taskId`; its `cause` holds the original Node.js error when Node.js supplies it. Each affected task promise receives a distinct `WorkerCrashError` with its own `taskId`. Raw crash details (`cause`, `exitCode`, `signal`) reach a task error only when the worker owns exactly one active task; otherwise the task error omits them. Each task promise settles exactly once. Recoverable queued tasks are redistributed to ready peer workers.
 
-The user `errorHandler`, `exitHandler`, and `PoolEvents.error` callbacks are synchronous contracts. If one throws during crash or termination handling, Poolifier first settles affected task promises and completes worker removal, replacement decisions, or full-pool destruction. It then rethrows the original value asynchronously exactly once for that callback invocation. The callback failure is not swallowed and does not replace the typed task rejection.
+The `errorHandler`, `exitHandler`, and `PoolEvents.error` callbacks are synchronous. A throw in any of them is rethrown asynchronously exactly once after task settlement and cleanup complete; it does not replace the typed task rejection.
 
 ### `pool.hasTaskFunction(name)`
 

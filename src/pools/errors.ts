@@ -1,7 +1,3 @@
-/**
- * Pool-level typed error classes for worker crash and termination paths.
- */
-
 import type { TaskUUID } from '../utility-types.js'
 
 /**
@@ -32,8 +28,7 @@ export interface WorkerTerminationErrorOptions {
  * codes, and exit code `0` while the worker still owns an in-flight task.
  *
  * For cluster workers, `exitCode` and `signal` preserve raw Node.js exit-event
- * semantics. An uncaught exception's original text remains on worker stderr
- * when Node.js does not provide it as an error cause.
+ * semantics.
  */
 export class WorkerCrashError extends Error {
   /** Raw Node.js exit code, or `null` when unavailable or signal-terminated. */

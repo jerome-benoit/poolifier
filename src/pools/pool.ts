@@ -99,7 +99,6 @@ export interface IPool<
   /**
    * Terminates all workers in this pool. Calls made during the same destruction
    * return the shared completion promise. A completed pool can be restarted.
-   * @returns The shared destruction outcome.
    */
   readonly destroy: () => Promise<void>
   /**
@@ -311,15 +310,14 @@ export interface PoolOptions<Worker extends IWorker> {
    */
   env?: Record<string, unknown>
   /**
-   * A synchronous worker error callback. If it throws during lifecycle
-   * handling, Poolifier completes typed task settlement and cleanup before
-   * rethrowing the original value asynchronously exactly once.
+   * Synchronous worker error callback. A throw is rethrown asynchronously
+   * exactly once after task settlement and cleanup complete.
    * @defaultValue `() => {}`
    */
   errorHandler?: ErrorHandler<Worker>
   /**
-   * A synchronous worker exit callback. See {@link ExitHandler} for raw Node.js
-   * exit arguments and cleanup-before-rethrow behavior.
+   * Synchronous worker exit callback. See {@link ExitHandler} for argument
+   * semantics and throw behavior.
    * @defaultValue `() => {}`
    */
   exitHandler?: ExitHandler<Worker>
