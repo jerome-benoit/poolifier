@@ -9,9 +9,9 @@ import { type WorkerCrashError, WorkerTerminationError } from './errors.js'
 import { TerminalSignalAggregator } from './terminal-signal-aggregator.js'
 import { WorkerLifecycleCoordinator } from './worker-lifecycle-coordinator.js'
 import {
+  buildUnexpectedExitError,
   buildWorkerCrashError,
   buildWorkerTaskCrashError,
-  makeUnexpectedExitError,
 } from './worker-reconciliation-error-builders.js'
 import { waitForWorkerTransportDrain } from './worker-transport-drain.js'
 
@@ -86,7 +86,7 @@ export class WorkerTerminalController<Worker extends TerminalWorker> {
       const reentry = this.#crashErrors.has(handle.worker)
       const crashError = this.#rejectCrash(
         handle,
-        makeUnexpectedExitError(
+        buildUnexpectedExitError(
           'lifecycle',
           exitCode,
           signal,

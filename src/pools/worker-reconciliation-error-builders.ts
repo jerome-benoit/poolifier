@@ -67,7 +67,7 @@ export const buildWorkerReconciliationError = <Worker extends LifecycleWorker>(
               workerId: transition.handle.lease.id,
             }
         )
-        : makeUnexpectedExitError(
+        : buildUnexpectedExitError(
           'lifecycle',
           transition.exit?.code ?? null,
           transition.exit?.signal,
@@ -81,7 +81,7 @@ export const buildWorkerReconciliationError = <Worker extends LifecycleWorker>(
   )
 }
 
-export const makeUnexpectedExitError = (
+export const buildUnexpectedExitError = (
   context: 'lifecycle' | 'teardown',
   exitCode: null | number,
   signal: NodeJS.Signals | null | undefined,

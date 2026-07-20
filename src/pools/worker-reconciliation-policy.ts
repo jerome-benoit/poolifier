@@ -13,10 +13,10 @@ import type { IWorker, IWorkerNode } from './worker.js'
 import { WorkerCrashError, WorkerTerminationError } from './errors.js'
 import { getWorkerCrashAttribution } from './worker-crash-attribution.js'
 import {
+  buildUnexpectedExitError,
   buildWorkerCrashError,
   buildWorkerReconciliationError,
   buildWorkerTaskCrashError,
-  makeUnexpectedExitError,
 } from './worker-reconciliation-error-builders.js'
 import { WorkerTaskRecovery } from './worker-task-recovery.js'
 
@@ -95,6 +95,15 @@ export class WorkerReconciliationPolicy<
     )
   }
 
+  public buildUnexpectedExitError (
+    context: 'lifecycle' | 'teardown',
+    exitCode: null | number,
+    signal: NodeJS.Signals | null | undefined,
+    workerId: number | undefined
+  ): WorkerCrashError {
+    return buildUnexpectedExitError(context, exitCode, signal, workerId)
+  }
+
   public complete (
     input: WorkerCompletionInput<WorkerNode>,
     signal: AbortSignal
@@ -107,15 +116,6 @@ export class WorkerReconciliationPolicy<
     signal.throwIfAborted()
     this.#publishCompletionError(input, firstError)
     return Promise.resolve()
-  }
-
-  public makeUnexpectedExitError (
-    context: 'lifecycle' | 'teardown',
-    exitCode: null | number,
-    signal: NodeJS.Signals | null | undefined,
-    workerId: number | undefined
-  ): WorkerCrashError {
-    return makeUnexpectedExitError(context, exitCode, signal, workerId)
   }
 
   public reconcile (
@@ -271,7 +271,7 @@ export class WorkerReconciliationPolicy<
                   workerId: transition.handle.worker.info.id,
                 }
             )
-            : this.makeUnexpectedExitError(
+            : this.buildUnexpectedExitError(
               'lifecycle',
               transition.exit?.code ?? null,
               transition.exit?.signal,
