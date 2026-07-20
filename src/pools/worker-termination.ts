@@ -6,13 +6,13 @@ import { WorkerTypes } from './worker.js'
 export const WORKER_TERMINATION_GRACE_MS = 5000
 
 type TerminationOutcome =
-  | { readonly error: unknown; readonly kind: 'failed' }
-  | { readonly kind: 'completed' }
+  | Readonly<{ error: unknown; kind: 'failed' }>
+  | Readonly<{ kind: 'completed' }>
 
 type TerminationSignal =
-  | { readonly kind: 'disconnect' }
-  | { readonly kind: 'exit' }
-  | { readonly kind: 'grace-expired' }
+  | Readonly<{ kind: 'disconnect' }>
+  | Readonly<{ kind: 'exit' }>
+  | Readonly<{ kind: 'grace-expired' }>
 
 type WorkerSignal = Readonly<{
   promise: Promise<TerminationSignal>
