@@ -31,7 +31,7 @@ const createFixture = (candidates, waiting = new Map(), demand = 0) => {
     select,
     strategy: () => 'least-used',
     workerCount: () => candidates.length,
-    workerKey: candidate =>
+    workerNodeKey: candidate =>
       candidates.findIndex(entry => entry.handle === candidate),
   }
   const registry = {

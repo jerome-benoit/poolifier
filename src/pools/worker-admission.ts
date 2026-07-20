@@ -14,7 +14,7 @@ export interface WorkerAdmissionHooks<Worker, Strategy> {
   readonly shouldCreateWorker?: () => boolean
   readonly strategy: (name?: string) => Strategy | undefined
   readonly workerCount: () => number
-  readonly workerKey: (handle: WorkerHandle<Worker>) => number
+  readonly workerNodeKey: (handle: WorkerHandle<Worker>) => number
 }
 
 export class WorkerAdmission<Worker, Data, Response, Strategy> {
@@ -54,7 +54,7 @@ export class WorkerAdmission<Worker, Data, Response, Strategy> {
       .snapshotHandles()
       .map(handle => ({
         handle,
-        key: this.hooks.workerKey(handle),
+        key: this.hooks.workerNodeKey(handle),
         state: this.coordinator.state(handle),
       }))
       .filter(

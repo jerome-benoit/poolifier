@@ -67,7 +67,7 @@ import { TaskFunctionStaticSchema } from './task-function-static-schema.js'
 import { TaskFunctionStore } from './task-function-store.js'
 import { TaskFunctionTransactionManager } from './task-function-transaction-manager.js'
 import { TaskRegistry } from './task-registry.js'
-import { TaskRouting } from './task-routing.js'
+import { TaskRouter } from './task-routing.js'
 import { TaskScheduler } from './task-scheduler.js'
 import { TaskStealingController } from './task-stealing-controller.js'
 import { TaskUsageAccounting } from './task-usage-accounting.js'
@@ -243,7 +243,7 @@ export abstract class AbstractPool<
     Response
   >
 
-  private readonly taskRouting: TaskRouting<
+  private readonly taskRouter: TaskRouter<
     IWorkerNode<Worker, Data>,
     Data,
     Response
@@ -628,7 +628,7 @@ export abstract class AbstractPool<
       },
       workers: () => this.workerNodes,
     })
-    this.taskRouting = new TaskRouting(this.taskScheduler, {
+    this.taskRouter = new TaskRouter(this.taskScheduler, {
       concurrency: () => this.opts.tasksQueueOptions?.concurrency ?? 1,
       executing: workerNode => workerNode.usage.tasks.executing,
       onResult: result => {
@@ -726,7 +726,7 @@ export abstract class AbstractPool<
         shouldCreateWorker: () => this.shallCreateDynamicWorker(),
         strategy: name => this.getTaskFunctionWorkerChoiceStrategy(name),
         workerCount: () => this.workerNodes.length,
-        workerKey: handle => this.getWorkerNodeKeyByHandle(handle),
+        workerNodeKey: handle => this.getWorkerNodeKeyByHandle(handle),
       }
     )
 
@@ -1625,7 +1625,7 @@ export abstract class AbstractPool<
         : this.workerLifecycleCoordinator.acquireDispatch(handle)
     if (permit == null) return
     if (task.taskId == null) {
-      this.taskRouting.routeUntracked(task, permit)
+      this.taskRouter.routeUntracked(task, permit)
       return
     }
     const record = this.taskRegistry.get(task.taskId)
@@ -1637,7 +1637,7 @@ export abstract class AbstractPool<
       })
       return
     }
-    const result = this.taskRouting.route(task.taskId, permit)
+    const result = this.taskRouter.route(task.taskId, permit)
     if (taskCommitted && result.kind !== 'committed') {
       this.taskEventState.synchronizeBackPressure()
     }
@@ -1958,7 +1958,7 @@ export abstract class AbstractPool<
             )
             return
           }
-          this.taskRouting.route(taskId, permit)
+          this.taskRouter.route(taskId, permit)
           this.taskEventState.checkExecutionStarted()
         }),
       abortSignal

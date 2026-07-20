@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { TaskRouting } from '../../../lib/pools/task-routing.mjs'
+import { TaskRouter } from '../../../lib/pools/task-routing.mjs'
 
 const createFixture = ({
   executing = 0,
@@ -25,20 +25,20 @@ const createFixture = ({
         : scheduler.enqueue(taskId, permit.handle)
   )
   const onResult = vi.fn()
-  const routing = new TaskRouting(scheduler, {
+  const router = new TaskRouter(scheduler, {
     concurrency: () => 1,
     executing: () => executing,
     onResult,
     queuesEnabled: () => queuesEnabled,
   })
-  return { handle, onResult, routing, scheduler }
+  return { handle, onResult, router, scheduler }
 }
 
-describe('TaskRouting', () => {
+describe('TaskRouter', () => {
   it('waits without dispatching when admission awaits readiness', () => {
     const fixture = createFixture()
 
-    fixture.routing.route('task', {
+    fixture.router.route('task', {
       handle: fixture.handle,
       readiness: 'awaitingReady',
     })
@@ -50,7 +50,7 @@ describe('TaskRouting', () => {
   it('dispatches immediately when capacity is available', () => {
     const fixture = createFixture()
 
-    fixture.routing.route('task', {
+    fixture.router.route('task', {
       handle: fixture.handle,
       readiness: 'ready',
     })
@@ -62,7 +62,7 @@ describe('TaskRouting', () => {
   it('enqueues when queueing is enabled and execution is saturated', () => {
     const fixture = createFixture({ executing: 1 })
 
-    fixture.routing.route('task', {
+    fixture.router.route('task', {
       handle: fixture.handle,
       readiness: 'ready',
     })

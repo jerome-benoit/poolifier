@@ -10,7 +10,7 @@ export interface TaskRoutingHooks<Worker> {
   readonly queuesEnabled: () => boolean
 }
 
-export class TaskRouting<Worker extends SchedulerWorker<Data>, Data, Response> {
+export class TaskRouter<Worker extends SchedulerWorker<Data>, Data, Response> {
   public constructor (
     private readonly scheduler: TaskScheduler<Worker, Data, Response>,
     private readonly hooks: TaskRoutingHooks<Worker>
