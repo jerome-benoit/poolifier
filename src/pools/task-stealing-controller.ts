@@ -71,7 +71,7 @@ export class TaskStealingController<
     this.callbacks.defer(() => {
       try {
         if (
-          !this.isCurrent(source) ||
+          !this.#isCurrent(source) ||
           !source.worker.info.backPressure ||
           !this.callbacks.canSteal() ||
           this.ratioReached()
@@ -95,7 +95,7 @@ export class TaskStealingController<
           if (source.worker.tasksQueueSize() === 0) break
           destination.worker.info.backPressureStealing = true
           try {
-            this.steal(source, destination)
+            this.#steal(source, destination)
           } finally {
             destination.worker.info.backPressureStealing = false
           }
@@ -107,12 +107,12 @@ export class TaskStealingController<
   }
 
   public cancel (handle: WorkerHandle<Worker>): void {
-    this.terminateSequence(handle)
+    this.#terminateSequence(handle)
   }
 
   public cancelAll (): void {
     for (const handle of this.callbacks.handles()) {
-      this.terminateSequence(handle)
+      this.#terminateSequence(handle)
     }
     for (const timer of this.#timers.values()) this.callbacks.cancel(timer)
     this.#timers.clear()
@@ -123,7 +123,7 @@ export class TaskStealingController<
     destination: WorkerHandle<Worker>,
     previousTaskName?: string
   ): void {
-    if (!this.isCurrent(destination)) return
+    if (!this.#isCurrent(destination)) return
     const info = destination.worker.info
     if (
       !info.continuousStealing &&
@@ -132,7 +132,7 @@ export class TaskStealingController<
       return
     }
     if (info.continuousStealing && !this.callbacks.isIdle(destination)) {
-      this.terminateSequence(destination, previousTaskName)
+      this.#terminateSequence(destination, previousTaskName)
       return
     }
     const retainedPreviousTaskName =
@@ -150,7 +150,7 @@ export class TaskStealingController<
         }
       }
       const stolenTaskName =
-        source == null ? undefined : this.steal(source, destination)
+        source == null ? undefined : this.#steal(source, destination)
       this.callbacks.updateSequence(
         destination,
         stolenTaskName,
@@ -159,7 +159,7 @@ export class TaskStealingController<
       if (stolenTaskName != null) {
         this.#lastStolenTaskNames.set(destination, stolenTaskName)
       }
-      this.cancelTimer(destination)
+      this.#cancelTimer(destination)
       const delay = Math.min(
         exponentialDelay(this.callbacks.sequentiallyStolen(destination)),
         MAX_TASK_STEALING_DELAY_MS
@@ -167,13 +167,13 @@ export class TaskStealingController<
       const timer = this.callbacks.schedule(() => {
         if (this.#timers.get(destination) !== timer) return
         this.#timers.delete(destination)
-        if (this.isCurrent(destination)) {
+        if (this.#isCurrent(destination)) {
           this.idle(destination, stolenTaskName ?? retainedPreviousTaskName)
         }
       }, delay)
       this.#timers.set(destination, timer)
     } catch (error) {
-      this.terminateSequence(destination, retainedPreviousTaskName)
+      this.#terminateSequence(destination, retainedPreviousTaskName)
       this.callbacks.onError(error)
     }
   }
@@ -190,13 +190,13 @@ export class TaskStealingController<
     return stealing >= Math.ceil(handles.length * ratio)
   }
 
-  private cancelTimer (handle: WorkerHandle<Worker>): void {
+  #cancelTimer (handle: WorkerHandle<Worker>): void {
     const timer = this.#timers.get(handle)
     if (timer != null) this.callbacks.cancel(timer)
     this.#timers.delete(handle)
   }
 
-  private isCurrent (handle: WorkerHandle<Worker>): boolean {
+  #isCurrent (handle: WorkerHandle<Worker>): boolean {
     return (
       this.coordinator.isCurrent(handle) &&
       this.coordinator.handle(handle.worker) === handle &&
@@ -204,15 +204,15 @@ export class TaskStealingController<
     )
   }
 
-  private steal (
+  #steal (
     source: WorkerHandle<Worker>,
     destination: WorkerHandle<Worker>
   ): string | undefined {
     const sourceInfo = source.worker.info
     const destinationInfo = destination.worker.info
     if (
-      !this.isCurrent(source) ||
-      !this.isCurrent(destination) ||
+      !this.#isCurrent(source) ||
+      !this.#isCurrent(destination) ||
       !sourceInfo.ready ||
       sourceInfo.stolen ||
       sourceInfo.stealing ||
@@ -240,11 +240,11 @@ export class TaskStealingController<
     }
   }
 
-  private terminateSequence (
+  #terminateSequence (
     handle: WorkerHandle<Worker>,
     fallbackTaskName?: string
   ): void {
-    this.cancelTimer(handle)
+    this.#cancelTimer(handle)
     handle.worker.info.continuousStealing = false
     if (this.callbacks.sequentiallyStolen(handle) > 0) {
       this.callbacks.resetSequence(
