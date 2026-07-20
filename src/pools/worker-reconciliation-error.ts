@@ -18,10 +18,10 @@ export type WorkerReconciliationStage =
   | 'terminate'
 
 export class WorkerReconciliationError extends Error {
-  readonly failures: readonly WorkerReconciliationFailure[]
-  override readonly name = 'WorkerReconciliationError'
-  readonly secondaryFailures: readonly WorkerReconciliationFailure[]
-  readonly stage: WorkerReconciliationStage
+  public readonly failures: readonly WorkerReconciliationFailure[]
+  public override readonly name = 'WorkerReconciliationError'
+  public readonly secondaryFailures: readonly WorkerReconciliationFailure[]
+  public readonly stage: WorkerReconciliationStage
 
   public constructor (failures: readonly WorkerReconciliationFailure[]) {
     const primary = failures[0]
@@ -35,11 +35,11 @@ export class WorkerReconciliationError extends Error {
 }
 
 export class WorkerReconciliationTimeoutError extends Error {
-  override readonly name = 'WorkerReconciliationTimeoutError'
+  public override readonly name = 'WorkerReconciliationTimeoutError'
 
   public constructor (
-    readonly stage: WorkerReconciliationStage,
-    readonly timeoutMs: number
+    public readonly stage: WorkerReconciliationStage,
+    public readonly timeoutMs: number
   ) {
     super(
       `Worker reconciliation '${stage}' timed out after ${timeoutMs.toString()}ms`
