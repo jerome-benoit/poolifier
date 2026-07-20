@@ -181,6 +181,7 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
     return this.terminationPromise
   }
 
+  /** @inheritdoc */
   public async waitForTransportDrain (): Promise<void> {
     await this.transportDrainBarrier.wait()
   }
