@@ -10,15 +10,19 @@ export type TaskFunctionPropertiesByWorker =
 
 export class TaskFunctionStore<Data = unknown, Response = unknown> {
   public get size (): number {
-    return this.snapshot().entries.length
+    return this.#snapshot().entries.length
   }
 
+  readonly #snapshot: () => TaskFunctionCatalogSnapshot<Data, Response>
+
   public constructor (
-    private readonly snapshot: () => TaskFunctionCatalogSnapshot<Data, Response>
-  ) {}
+    snapshot: () => TaskFunctionCatalogSnapshot<Data, Response>
+  ) {
+    this.#snapshot = snapshot
+  }
 
   public get (name: string): TaskFunctionObject<Data, Response> | undefined {
-    return this.snapshot().entries.find(entry => entry.name === name)
+    return this.#snapshot().entries.find(entry => entry.name === name)
       ?.taskFunction
   }
 
@@ -45,7 +49,7 @@ export class TaskFunctionStore<Data = unknown, Response = unknown> {
         .filter(properties => properties.name !== DEFAULT_TASK_NAME)
         .map(properties => [properties.name, properties])
     )
-    const snapshot = this.snapshot()
+    const snapshot = this.#snapshot()
     for (const entry of snapshot.entries) {
       byName.set(
         entry.name,
@@ -90,7 +94,7 @@ export class TaskFunctionStore<Data = unknown, Response = unknown> {
   public * [Symbol.iterator] (): IterableIterator<
     [string, TaskFunctionObject<Data, Response>]
   > {
-    for (const entry of this.snapshot().entries) {
+    for (const entry of this.#snapshot().entries) {
       yield [entry.name, entry.taskFunction]
     }
   }

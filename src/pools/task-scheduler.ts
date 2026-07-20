@@ -74,7 +74,7 @@ export class TaskScheduler<
         if (taken.kind === 'retry') break
         continue
       }
-      results.push(this.placeDetached(taken.taskId, source))
+      results.push(this.#placeDetached(taken.taskId, source))
     }
     return results
   }
@@ -124,9 +124,9 @@ export class TaskScheduler<
       if (destination == null) {
         return this.reject(taskId, noCandidateError(taskId))
       }
-      return this.settlePlacementRetry(
+      return this.#settlePlacementRetry(
         taskId,
-        this.placeOn(taskId, destination)
+        this.#placeOn(taskId, destination)
       )
     })
   }
@@ -152,21 +152,21 @@ export class TaskScheduler<
   ): ScheduleResult<Worker> {
     const taken = this.#queue.takeDetached(source, true)
     return taken.kind === 'task'
-      ? this.placeOn(taken.taskId, destination)
+      ? this.#placeOn(taken.taskId, destination)
       : taken
   }
 
-  private placeDetached (
+  #placeDetached (
     taskId: TaskUUID,
     source: WorkerHandle<Worker>
   ): ScheduleResult<Worker> {
     const destination = this.callbacks.candidates(source).at(0)
     return destination == null
       ? this.reject(taskId, new Error('No scheduling candidate'))
-      : this.settlePlacementRetry(taskId, this.placeOn(taskId, destination))
+      : this.#settlePlacementRetry(taskId, this.#placeOn(taskId, destination))
   }
 
-  private placeOn (
+  #placeOn (
     taskId: TaskUUID,
     destination: WorkerHandle<Worker>
   ): ScheduleResult<Worker> {
@@ -179,7 +179,7 @@ export class TaskScheduler<
       : this.enqueue(taskId, destination)
   }
 
-  private settlePlacementRetry (
+  #settlePlacementRetry (
     taskId: TaskUUID,
     result: ScheduleResult<Worker>
   ): ScheduleResult<Worker> {

@@ -32,12 +32,14 @@ export class WorkerReconciler<
   Worker extends LifecycleWorker = LifecycleWorker
 > {
   readonly #callbacks: WorkerLifecycleCallbacks<Worker>
+  readonly #phaseTimeoutMs: number
 
   public constructor (
     callbacks: WorkerLifecycleCallbacks<Worker>,
-    private readonly phaseTimeoutMs = 30_000
+    phaseTimeoutMs = 30_000
   ) {
     this.#callbacks = callbacks
+    this.#phaseTimeoutMs = phaseTimeoutMs
   }
 
   public async reconcile (
@@ -47,7 +49,7 @@ export class WorkerReconciler<
     const capture = async <Value>(
       stage: WorkerReconciliationStage,
       operation: (signal: AbortSignal) => Promise<Value> | Value,
-      timeoutMs: null | number = this.phaseTimeoutMs
+      timeoutMs: null | number = this.#phaseTimeoutMs
     ): Promise<undefined | Value> => {
       let timeout: NodeJS.Timeout | undefined
       const controller = new AbortController()
@@ -91,10 +93,10 @@ export class WorkerReconciler<
           MAX_TIMER_DELAY_MS - PREPARATION_TIMEOUT_OVERHEAD_MS
           ? null
           : Math.max(
-            this.phaseTimeoutMs,
+            this.#phaseTimeoutMs,
             preparation.prepareTimeoutMs + PREPARATION_TIMEOUT_OVERHEAD_MS
           )
-        : this.phaseTimeoutMs
+        : this.#phaseTimeoutMs
     const reconciliationValue = isPreparation(preparation)
       ? await capture(
         'prepare',
