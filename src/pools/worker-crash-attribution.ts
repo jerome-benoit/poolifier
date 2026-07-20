@@ -4,8 +4,8 @@ import type { ReconciliationReservation } from './lifecycle-types.js'
 import { isActiveTaskState } from './task-transition-decision.js'
 
 type WorkerCrashAttribution = Readonly<{
-  readonly activeTaskIds: ReadonlySet<TaskUUID>
-  readonly attributedTaskId: TaskUUID | undefined
+  activeTaskIds: ReadonlySet<TaskUUID>
+  attributedTaskId: TaskUUID | undefined
 }>
 
 export const getWorkerCrashAttribution = (
