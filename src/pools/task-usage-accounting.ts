@@ -4,14 +4,14 @@ import type { WorkerUsage } from './worker.js'
 
 import { hasMultipleTaskFunctions } from './utils.js'
 
-export interface AccountingWorkerNode {
+export interface AccountingWorker {
   getTaskFunctionWorkerUsage: (name: string) => undefined | WorkerUsage
   readonly info: Readonly<{ taskFunctionsProperties?: readonly unknown[] }>
   readonly usage: WorkerUsage
 }
 
 export interface TaskUsageAccountingCallbacks<
-  Worker extends AccountingWorkerNode,
+  Worker extends AccountingWorker,
   Data,
   Response
 > {
@@ -31,7 +31,7 @@ export interface TaskUsageAccountingCallbacks<
 }
 
 export class TaskUsageAccounting<
-  Worker extends AccountingWorkerNode,
+  Worker extends AccountingWorker,
   Data = unknown,
   Response = unknown
 > {
