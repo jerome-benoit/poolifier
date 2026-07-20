@@ -11,8 +11,8 @@ import {
 } from './utils.js'
 import { terminateWorker } from './worker-termination.js'
 import {
-  TransportDrainBarrier,
   type WorkerTransportDrain,
+  WorkerTransportDrainBarrier,
 } from './worker-transport-drain.js'
 import { WorkerUsageStore } from './worker-usage-store.js'
 import {
@@ -55,7 +55,7 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
 
   private exited = false
   private terminationPromise?: Promise<void>
-  private readonly transportDrainBarrier: TransportDrainBarrier
+  private readonly transportDrainBarrier: WorkerTransportDrainBarrier
   private readonly usageStore: WorkerUsageStore<Data>
 
   /**
@@ -82,8 +82,8 @@ export class WorkerNode<Worker extends IWorker, Data = unknown>
     const messageChannel = this.messageChannel
     this.transportDrainBarrier =
       messageChannel != null
-        ? new TransportDrainBarrier(messageChannel.port1, 'close')
-        : new TransportDrainBarrier(this.worker, 'disconnect')
+        ? new WorkerTransportDrainBarrier(messageChannel.port1, 'close')
+        : new WorkerTransportDrainBarrier(this.worker, 'disconnect')
     this.tasksQueueBackPressureSize = opts.tasksQueueBackPressureSize
     this.tasksQueue = new PriorityQueue<Task<Data>>(
       opts.tasksQueueBucketSize,

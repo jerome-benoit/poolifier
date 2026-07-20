@@ -11,7 +11,7 @@ type DrainSource = Readonly<{
   once: (event: DrainEvent, listener: () => void) => unknown
 }>
 
-export class TransportDrainBarrier {
+export class WorkerTransportDrainBarrier {
   readonly #drained: Promise<void>
   #resolveDrain?: () => void
 
