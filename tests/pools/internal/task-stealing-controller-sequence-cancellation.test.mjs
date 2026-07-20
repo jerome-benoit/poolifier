@@ -40,7 +40,7 @@ const createFixture = task => {
       taskId: task.taskId,
     })),
   }
-  const hooks = {
+  const callbacks = {
     applyResult: vi.fn(),
     cancel: vi.fn(),
     canSteal: () => true,
@@ -65,15 +65,15 @@ const createFixture = task => {
     isSchedulable: () => true,
   }
   return {
+    callbacks,
     controller: new TaskStealingController(
       scheduler,
       { get: () => ({ task }) },
       coordinator,
-      hooks
+      callbacks
     ),
     destination,
     handles,
-    hooks,
     scheduler,
     source,
     timers,
@@ -94,16 +94,16 @@ const markOperationsActive = handle => {
 }
 
 describe('TaskStealingController sequence identity and cancellation', () => {
-  it('passes an unnamed task to onStolen but only its normalized name to sequence hooks', () => {
+  it('passes an unnamed task to onStolen but only its normalized name to sequence callbacks', () => {
     const payload = {
-      marker: 'must-not-reach-sequence-hooks',
+      marker: 'must-not-reach-sequence-callbacks',
       values: Array.from({ length: 512 }, (_, index) => index),
     }
     const task = { data: payload, taskId: 'unnamed-task' }
     const fixture = createFixture(task)
     let observedSynchronously = false
     let observedTask
-    fixture.hooks.onStolen.mockImplementation((_handle, stolenTask) => {
+    fixture.callbacks.onStolen.mockImplementation((_handle, stolenTask) => {
       observedTask = stolenTask
       observedSynchronously = true
     })
@@ -112,19 +112,21 @@ describe('TaskStealingController sequence identity and cancellation', () => {
 
     expect(observedSynchronously).toBe(true)
     expect(observedTask).toBe(task)
-    expect(fixture.hooks.onStolen).toHaveBeenCalledWith(
+    expect(fixture.callbacks.onStolen).toHaveBeenCalledWith(
       fixture.destination,
       task
     )
-    expect(fixture.hooks.updateSequence).toHaveBeenCalledOnce()
-    const sequenceCall = fixture.hooks.updateSequence.mock.calls[0]
+    expect(fixture.callbacks.updateSequence).toHaveBeenCalledOnce()
+    const sequenceCall = fixture.callbacks.updateSequence.mock.calls[0]
     expect(sequenceCall).toHaveLength(3)
     expect(sequenceCall[0]).toBe(fixture.destination)
     expect(typeof sequenceCall[1]).toBe('string')
     expect(sequenceCall[1]).toBe(DEFAULT_TASK_NAME)
     expect(sequenceCall[2]).toBeUndefined()
-    expect(fixture.hooks.updateSequence.mock.calls.flat()).not.toContain(task)
-    expect(fixture.hooks.updateSequence.mock.calls.flat()).not.toContain(
+    expect(fixture.callbacks.updateSequence.mock.calls.flat()).not.toContain(
+      task
+    )
+    expect(fixture.callbacks.updateSequence.mock.calls.flat()).not.toContain(
       payload
     )
   })
@@ -134,7 +136,7 @@ describe('TaskStealingController sequence identity and cancellation', () => {
       name: DEFAULT_TASK_NAME,
       taskId: 'named-task-id',
     })
-    fixture.hooks.sequentiallyStolen.mockReturnValue(2)
+    fixture.callbacks.sequentiallyStolen.mockReturnValue(2)
     fixture.controller.idle(fixture.destination)
     const timer = fixture.timers[0]
     markOperationsActive(fixture.destination)
@@ -143,15 +145,15 @@ describe('TaskStealingController sequence identity and cancellation', () => {
     fixture.controller.cancel(fixture.destination)
 
     expect(fixture.destination.worker.info.continuousStealing).toBe(false)
-    expect(fixture.hooks.cancel).toHaveBeenCalledWith(timer)
-    expect(fixture.hooks.resetSequence).toHaveBeenCalledWith(
+    expect(fixture.callbacks.cancel).toHaveBeenCalledWith(timer)
+    expect(fixture.callbacks.resetSequence).toHaveBeenCalledWith(
       fixture.destination,
       DEFAULT_TASK_NAME
     )
     expect(operationFlags(fixture.destination)).toEqual(expectedFlags)
     timer.callback()
     expect(fixture.scheduler.steal).toHaveBeenCalledOnce()
-    expect(fixture.hooks.schedule).toHaveBeenCalledOnce()
+    expect(fixture.callbacks.schedule).toHaveBeenCalledOnce()
   })
 
   it('terminates continuous stealing without retained state or a sequence', () => {
@@ -166,15 +168,15 @@ describe('TaskStealingController sequence identity and cancellation', () => {
     fixture.controller.cancel(fixture.destination)
 
     expect(fixture.destination.worker.info.continuousStealing).toBe(false)
-    expect(fixture.hooks.cancel).not.toHaveBeenCalled()
-    expect(fixture.hooks.resetSequence).not.toHaveBeenCalled()
+    expect(fixture.callbacks.cancel).not.toHaveBeenCalled()
+    expect(fixture.callbacks.resetSequence).not.toHaveBeenCalled()
     expect(operationFlags(fixture.destination)).toEqual(expectedFlags)
   })
 
   it('terminates a retained default sequence when its recursive steal throws', () => {
     const fixture = createFixture({ taskId: 'unnamed-task-id' })
     const error = new Error('recursive steal failure')
-    fixture.hooks.sequentiallyStolen.mockReturnValue(1)
+    fixture.callbacks.sequentiallyStolen.mockReturnValue(1)
 
     fixture.controller.idle(fixture.destination)
     const timer = fixture.timers[0]
@@ -182,21 +184,21 @@ describe('TaskStealingController sequence identity and cancellation', () => {
       throw error
     })
 
-    expect(fixture.hooks.updateSequence).toHaveBeenCalledWith(
+    expect(fixture.callbacks.updateSequence).toHaveBeenCalledWith(
       fixture.destination,
       DEFAULT_TASK_NAME,
       undefined
     )
     expect(fixture.timers).toHaveLength(1)
     expect(() => timer.callback()).not.toThrow()
-    expect(fixture.hooks.onError).toHaveBeenCalledOnce()
-    expect(fixture.hooks.onError).toHaveBeenCalledWith(error)
+    expect(fixture.callbacks.onError).toHaveBeenCalledOnce()
+    expect(fixture.callbacks.onError).toHaveBeenCalledWith(error)
     expect(fixture.destination.worker.info.continuousStealing).toBe(false)
-    expect(fixture.hooks.resetSequence).toHaveBeenCalledWith(
+    expect(fixture.callbacks.resetSequence).toHaveBeenCalledWith(
       fixture.destination,
       DEFAULT_TASK_NAME
     )
-    expect(fixture.hooks.schedule).toHaveBeenCalledOnce()
+    expect(fixture.callbacks.schedule).toHaveBeenCalledOnce()
     expect(operationFlags(fixture.destination)).toEqual({
       backPressureStealing: false,
       stealing: false,
@@ -205,13 +207,13 @@ describe('TaskStealingController sequence identity and cancellation', () => {
 
     expect(() => timer.callback()).not.toThrow()
     expect(fixture.scheduler.steal).toHaveBeenCalledTimes(2)
-    expect(fixture.hooks.onError).toHaveBeenCalledOnce()
-    expect(fixture.hooks.schedule).toHaveBeenCalledOnce()
+    expect(fixture.callbacks.onError).toHaveBeenCalledOnce()
+    expect(fixture.callbacks.schedule).toHaveBeenCalledOnce()
 
     fixture.controller.idle(fixture.destination)
 
     expect(fixture.scheduler.steal).toHaveBeenCalledTimes(3)
-    expect(fixture.hooks.schedule).toHaveBeenCalledTimes(2)
+    expect(fixture.callbacks.schedule).toHaveBeenCalledTimes(2)
   })
 
   it('terminates every current handle when all stealing is cancelled', () => {
@@ -232,7 +234,7 @@ describe('TaskStealingController sequence identity and cancellation', () => {
     expect(
       fixture.handles.map(handle => handle.worker.info.continuousStealing)
     ).toEqual([false, false, false])
-    expect(fixture.hooks.cancel).toHaveBeenCalledWith(timer)
+    expect(fixture.callbacks.cancel).toHaveBeenCalledWith(timer)
     expect(fixture.handles.map(operationFlags)).toEqual(expectedFlags)
     expect(fixture.untracked.worker.info.continuousStealing).toBe(false)
   })

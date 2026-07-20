@@ -2,7 +2,10 @@ import { expect, it } from 'vitest'
 
 import { WorkerCrashError } from '../../../lib/index.mjs'
 import { WorkerReconciliationPolicy } from '../../../lib/pools/worker-reconciliation-policy.mjs'
-import { createHooks, signal } from './worker-reconciliation-policy-fixture.mjs'
+import {
+  createCallbacks,
+  signal,
+} from './worker-reconciliation-policy-fixture.mjs'
 
 it.each([
   ['dispatching', true, false],
@@ -19,9 +22,9 @@ it.each([
     const taskId = '00000000-0000-0000-0000-000000000c01'
     const lease = { generation: 3, id: 17 }
     const rawCause = new Error('reservation raw sentinel')
-    const hooks = createHooks()
-    hooks.reserve.mockReturnValue([{ lease, previousState, taskId }])
-    const policy = new WorkerReconciliationPolicy(hooks)
+    const callbacks = createCallbacks()
+    callbacks.reserve.mockReturnValue([{ lease, previousState, taskId }])
+    const policy = new WorkerReconciliationPolicy(callbacks)
     const worker = { info: { dynamic: false, id: 17 }, usage: { tasks: {} } }
 
     const recovery = policy.reconcile(
@@ -38,8 +41,8 @@ it.each([
     await recovery.prepare(signal)
     if (recoverable) recovery.finalizeResidual(signal)
 
-    expect(hooks.reject).toHaveBeenCalledOnce()
-    const rejected = hooks.reject.mock.calls[0][2]
+    expect(callbacks.reject).toHaveBeenCalledOnce()
+    const rejected = callbacks.reject.mock.calls[0][2]
     expect(rejected).toBeInstanceOf(WorkerCrashError)
     expect(rejected.taskId).toBe(taskId)
     expect(rejected.workerId).toBe(17)
@@ -72,15 +75,15 @@ it.each([
     )
     const lease = { generation: 6, id: 23 }
     const rawCause = new Error('multi-reservation raw sentinel')
-    const hooks = createHooks()
-    hooks.reserve.mockReturnValue(
+    const callbacks = createCallbacks()
+    callbacks.reserve.mockReturnValue(
       previousStates.map((previousState, index) => ({
         lease,
         previousState,
         taskId: taskIds[index],
       }))
     )
-    const policy = new WorkerReconciliationPolicy(hooks)
+    const policy = new WorkerReconciliationPolicy(callbacks)
     const worker = {
       info: { dynamic: false, id: lease.id },
       usage: { tasks: {} },
@@ -101,7 +104,7 @@ it.each([
     recovery.finalizeResidual(signal)
 
     const rejectedByTaskId = new Map(
-      hooks.reject.mock.calls.map(([taskId, , error]) => [taskId, error])
+      callbacks.reject.mock.calls.map(([taskId, , error]) => [taskId, error])
     )
     expect(rejectedByTaskId.size).toBe(taskIds.length)
     for (const taskId of taskIds) {
@@ -135,14 +138,16 @@ it.each([
   const taskId = '00000000-0000-0000-0000-000000000c02'
   const lease = { generation: 5, id: 19 }
   const rawCause = new Error('restoration raw sentinel')
-  const hooks = createHooks()
-  hooks.reserve.mockReturnValue([{ lease, previousState: 'queued', taskId }])
+  const callbacks = createCallbacks()
+  callbacks.reserve.mockReturnValue([
+    { lease, previousState: 'queued', taskId },
+  ])
   let restorationError
-  hooks.restore.mockImplementation((_reservations, error) => {
+  callbacks.restore.mockImplementation((_reservations, error) => {
     restorationError = error(failedTaskId)
     return [{ kind: 'settled', taskId }]
   })
-  const policy = new WorkerReconciliationPolicy(hooks)
+  const policy = new WorkerReconciliationPolicy(callbacks)
   const worker = { info: { dynamic: false, id: 19 }, usage: { tasks: {} } }
 
   const recovery = policy.reconcile(

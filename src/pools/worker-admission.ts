@@ -2,7 +2,7 @@ import type { DispatchPermit, WorkerHandle } from './lifecycle-types.js'
 import type { TaskRegistry } from './task-registry.js'
 import type { WorkerLifecycleCoordinator } from './worker-lifecycle-coordinator.js'
 
-export interface WorkerAdmissionHooks<Worker, Strategy> {
+export interface WorkerAdmissionCallbacks<Worker, Strategy> {
   readonly affinity: (name?: string) => ReadonlySet<number> | undefined
   readonly createWorker: () => void
   readonly isPoolActive: () => boolean
@@ -29,18 +29,18 @@ export class WorkerAdmission<Worker, Data, Response, Strategy> {
       TaskRegistry<Data, Response>,
       'size' | 'waitingReadyCount'
     >,
-    private readonly hooks: WorkerAdmissionHooks<Worker, Strategy>
+    private readonly callbacks: WorkerAdmissionCallbacks<Worker, Strategy>
   ) {}
 
   public acquire (name?: string): DispatchPermit<Worker> | undefined {
-    const affinity = this.hooks.affinity(name)
+    const affinity = this.callbacks.affinity(name)
     this.provisionForAffinity(affinity)
     if (
       affinity == null &&
       this.canCreateWorker() &&
-      (this.hasUnmetDemand() || this.hooks.shouldCreateWorker?.() === true)
+      (this.hasUnmetDemand() || this.callbacks.shouldCreateWorker?.() === true)
     ) {
-      this.hooks.createWorker()
+      this.callbacks.createWorker()
     }
     return this.admit(name, affinity, true)
   }
@@ -54,7 +54,7 @@ export class WorkerAdmission<Worker, Data, Response, Strategy> {
       .snapshotHandles()
       .map(handle => ({
         handle,
-        key: this.hooks.workerNodeKey(handle),
+        key: this.callbacks.workerNodeKey(handle),
         state: this.coordinator.state(handle),
       }))
       .filter(
@@ -83,15 +83,15 @@ export class WorkerAdmission<Worker, Data, Response, Strategy> {
     }
     if (tier.length === 0) {
       if (affinity == null && this.canCreateWorker()) {
-        this.hooks.createWorker()
+        this.callbacks.createWorker()
         return retry ? this.admit(name, affinity, false) : undefined
       }
       return undefined
     }
     const selectedKey =
       readiness === 'ready'
-        ? this.hooks.select(
-          this.hooks.strategy(name),
+        ? this.callbacks.select(
+          this.callbacks.strategy(name),
           new Set(tier.map(candidate => candidate.key))
         )
         : tier[0]?.key
@@ -106,8 +106,8 @@ export class WorkerAdmission<Worker, Data, Response, Strategy> {
 
   private canCreateWorker (): boolean {
     return (
-      this.hooks.isPoolActive() &&
-      this.hooks.workerCount() < this.hooks.maxWorkers
+      this.callbacks.isPoolActive() &&
+      this.callbacks.workerCount() < this.callbacks.maxWorkers
     )
   }
 
@@ -128,8 +128,11 @@ export class WorkerAdmission<Worker, Data, Response, Strategy> {
   ): void {
     if (affinity == null || affinity.size === 0) return
     const targetSize = Math.max(...affinity) + 1
-    while (this.hooks.workerCount() < targetSize && this.canCreateWorker()) {
-      this.hooks.createWorker()
+    while (
+      this.callbacks.workerCount() < targetSize &&
+      this.canCreateWorker()
+    ) {
+      this.callbacks.createWorker()
     }
   }
 }

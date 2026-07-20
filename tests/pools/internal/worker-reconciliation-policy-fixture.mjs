@@ -2,7 +2,7 @@ import { vi } from 'vitest'
 
 export const signal = new AbortController().signal
 
-export const createHooks = () => ({
+export const createCallbacks = () => ({
   apply: vi.fn(),
   createDynamic: vi.fn(),
   defer: vi.fn(),

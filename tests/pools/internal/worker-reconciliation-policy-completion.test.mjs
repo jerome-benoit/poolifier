@@ -9,7 +9,7 @@ import { WorkerReconciliationPolicy } from '../../../lib/pools/worker-reconcilia
 const signal = new AbortController().signal
 
 const createFixture = () => {
-  const hooks = {
+  const callbacks = {
     apply: vi.fn(),
     createDynamic: vi.fn(),
     defer: vi.fn(),
@@ -35,15 +35,15 @@ const createFixture = () => {
   }
   const handle = { lease: { generation: 1, id: 7 }, worker }
   return {
+    callbacks,
     handle,
-    hooks,
-    policy: new WorkerReconciliationPolicy(hooks),
+    policy: new WorkerReconciliationPolicy(callbacks),
   }
 }
 
 describe('WorkerReconciliationPolicy completion precedence', () => {
   it('prefers promoted transition crash over stale termination value', async () => {
-    const { handle, hooks, policy } = createFixture()
+    const { callbacks, handle, policy } = createFixture()
     const promotedCrash = new WorkerCrashError('worker crashed', {
       exitCode: 9,
       signal: 'SIGKILL',
@@ -68,14 +68,14 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
       signal
     )
 
-    expect(hooks.publishError).toHaveBeenCalledExactlyOnceWith(
+    expect(callbacks.publishError).toHaveBeenCalledExactlyOnceWith(
       promotedCrash,
       handle.lease
     )
   })
 
   it('preserves the raw cause for a faulted completion without owned tasks', async () => {
-    const { handle, hooks, policy } = createFixture()
+    const { callbacks, handle, policy } = createFixture()
     const rawCause = new Error('raw exit')
 
     await policy.complete(
@@ -92,14 +92,14 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
       signal
     )
 
-    expect(hooks.publishError).toHaveBeenCalledOnce()
-    const published = hooks.publishError.mock.calls[0][0]
+    expect(callbacks.publishError).toHaveBeenCalledOnce()
+    const published = callbacks.publishError.mock.calls[0][0]
     expect(published).toBeInstanceOf(WorkerCrashError)
     expect(published.cause).toBe(rawCause)
   })
 
   it('preserves the raw cause after all faulted work is recovered', async () => {
-    const { handle, hooks, policy } = createFixture()
+    const { callbacks, handle, policy } = createFixture()
     const rawCause = new Error('raw exit')
 
     await policy.complete(
@@ -116,14 +116,14 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
       signal
     )
 
-    expect(hooks.publishError).toHaveBeenCalledOnce()
-    const published = hooks.publishError.mock.calls[0][0]
+    expect(callbacks.publishError).toHaveBeenCalledOnce()
+    const published = callbacks.publishError.mock.calls[0][0]
     expect(published).toBeInstanceOf(WorkerCrashError)
     expect(published.cause).toBe(rawCause)
   })
 
   it('publishes a transition crash without a task over a task reconciliation value', async () => {
-    const { handle, hooks, policy } = createFixture()
+    const { callbacks, handle, policy } = createFixture()
     const rawCause = new Error('named transition raw crash')
     const reconciliationCrash = new WorkerCrashError('reserved task crash', {
       taskId: '00000000-0000-4000-8000-000000000001',
@@ -144,8 +144,8 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
       signal
     )
 
-    expect(hooks.publishError).toHaveBeenCalledOnce()
-    const published = hooks.publishError.mock.calls[0][0]
+    expect(callbacks.publishError).toHaveBeenCalledOnce()
+    const published = callbacks.publishError.mock.calls[0][0]
     expect(published).toBeInstanceOf(WorkerCrashError)
     expect(published).not.toBe(reconciliationCrash)
     expect(published.message).toBe(
@@ -154,11 +154,11 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
     expect(published.cause).toBe(rawCause)
     expect(published.workerId).toBe(handle.lease.id)
     expect(published.taskId).toBeUndefined()
-    expect(hooks.publishError.mock.calls[0][1]).toBe(handle.lease)
+    expect(callbacks.publishError.mock.calls[0][1]).toBe(handle.lease)
   })
 
   it('synthesizes a crash when neither completion source contains one', async () => {
-    const { handle, hooks, policy } = createFixture()
+    const { callbacks, handle, policy } = createFixture()
     const staleTermination = new WorkerTerminationError('draining timeout', {
       workerId: handle.lease.id,
     })
@@ -178,8 +178,8 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
       signal
     )
 
-    expect(hooks.publishError).toHaveBeenCalledOnce()
-    const published = hooks.publishError.mock.calls[0][0]
+    expect(callbacks.publishError).toHaveBeenCalledOnce()
+    const published = callbacks.publishError.mock.calls[0][0]
     expect(published).toBeInstanceOf(WorkerCrashError)
     expect(published).not.toBe(staleTermination)
     expect(published).toMatchObject({
@@ -187,11 +187,11 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
       signal: 'SIGTERM',
       workerId: handle.lease.id,
     })
-    expect(hooks.publishError.mock.calls[0][1]).toBe(handle.lease)
+    expect(callbacks.publishError.mock.calls[0][1]).toBe(handle.lease)
   })
 
   it('preserves non-faulted termination completion', async () => {
-    const { handle, hooks, policy } = createFixture()
+    const { callbacks, handle, policy } = createFixture()
     const termination = new WorkerTerminationError('clean termination', {
       workerId: handle.lease.id,
     })
@@ -211,7 +211,7 @@ describe('WorkerReconciliationPolicy completion precedence', () => {
       signal
     )
 
-    expect(hooks.publishError).toHaveBeenCalledExactlyOnceWith(
+    expect(callbacks.publishError).toHaveBeenCalledExactlyOnceWith(
       termination,
       handle.lease
     )

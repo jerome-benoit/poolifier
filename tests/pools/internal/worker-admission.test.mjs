@@ -23,7 +23,7 @@ const createFixture = (candidates, waiting = new Map(), demand = 0) => {
   }
   const createWorker = vi.fn()
   const select = vi.fn((_strategy, keys) => [...keys][0])
-  const hooks = {
+  const callbacks = {
     affinity: () => undefined,
     createWorker,
     isPoolActive: () => true,
@@ -39,9 +39,9 @@ const createFixture = (candidates, waiting = new Map(), demand = 0) => {
     waitingReadyCount: lease => waiting.get(lease.id) ?? 0,
   }
   return {
-    admission: new WorkerAdmission(coordinator, registry, hooks),
+    admission: new WorkerAdmission(coordinator, registry, callbacks),
+    callbacks,
     createWorker,
-    hooks,
     select,
     states,
   }
@@ -110,7 +110,7 @@ describe('WorkerAdmission', () => {
 
   it('restricts ready strategy selection to affinity candidates', () => {
     const fixture = createFixture([handle(1, 'ready'), handle(2, 'ready')])
-    fixture.hooks.affinity = () => new Set([1])
+    fixture.callbacks.affinity = () => new Set([1])
 
     expect(fixture.admission.acquire('task')?.handle.lease.id).toBe(2)
     expect(fixture.select).toHaveBeenCalledWith('least-used', new Set([1]))
@@ -128,8 +128,8 @@ describe('WorkerAdmission', () => {
 
   it('provisions affinity indices before selecting', () => {
     const fixture = createFixture([handle(1, 'ready')])
-    fixture.hooks.affinity = () => new Set([2])
-    fixture.hooks.workerCount =
+    fixture.callbacks.affinity = () => new Set([2])
+    fixture.callbacks.workerCount =
       fixture.createWorker.mock.calls.length === -1
         ? () => 1
         : (() => {

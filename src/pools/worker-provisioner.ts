@@ -11,7 +11,7 @@ export interface ProvisionedWorker<WorkerNode> {
   readonly workerNode: WorkerNode
 }
 
-export interface WorkerProvisioningHooks<WorkerNode> {
+export interface WorkerProvisioningCallbacks<WorkerNode> {
   readonly acquire: () => boolean
   readonly create: () => WorkerNode
   readonly onCrash: (handle: WorkerHandle<WorkerNode>, error: Error) => void
@@ -34,14 +34,16 @@ export class WorkerProvisioner<Worker extends IWorker, Data> {
     >,
     private readonly publisher: PoolEventPublisher,
     private readonly options: PoolOptions<Worker>,
-    private readonly hooks: WorkerProvisioningHooks<IWorkerNode<Worker, Data>>
+    private readonly callbacks: WorkerProvisioningCallbacks<
+      IWorkerNode<Worker, Data>
+    >
   ) {}
 
   public provision (
     dynamic: boolean
   ): ProvisionedWorker<IWorkerNode<Worker, Data>> | undefined {
-    if (!this.hooks.acquire()) return undefined
-    const workerNode = this.hooks.create()
+    if (!this.callbacks.acquire()) return undefined
+    const workerNode = this.callbacks.create()
     workerNode.info.dynamic = dynamic
     let handle: undefined | WorkerHandle<IWorkerNode<Worker, Data>>
     try {
@@ -50,17 +52,17 @@ export class WorkerProvisioner<Worker extends IWorker, Data> {
       this.defineLifecycleInfo(workerNode, registeredHandle)
       this.registerUserHandlers(workerNode, registeredHandle)
       workerNode.prependOnceWorkerEventHandler('error', (error: Error) => {
-        this.hooks.onCrash(registeredHandle, error)
+        this.callbacks.onCrash(registeredHandle, error)
       })
       workerNode.prependOnceWorkerEventHandler(
         'exit',
         (exitCode: null | number, signal?: NodeJS.Signals | null) => {
-          this.hooks.onExit(registeredHandle, exitCode, signal)
+          this.callbacks.onExit(registeredHandle, exitCode, signal)
         }
       )
       return { handle: registeredHandle, workerNode }
     } catch (error) {
-      return this.hooks.rollback(workerNode, handle, error)
+      return this.callbacks.rollback(workerNode, handle, error)
     }
   }
 

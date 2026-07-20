@@ -31,7 +31,7 @@ const createFixture = () => {
     })),
   }
   const timers = []
-  const hooks = {
+  const callbacks = {
     applyResult: vi.fn(),
     cancel: vi.fn(),
     canSteal: () => true,
@@ -57,16 +57,16 @@ const createFixture = () => {
   }
   const registry = { get: () => ({ task }) }
   return {
+    callbacks,
     controller: new TaskStealingController(
       scheduler,
       registry,
       coordinator,
-      hooks
+      callbacks
     ),
     coordinator,
     destination,
     handles,
-    hooks,
     scheduler,
     source,
     task,
@@ -77,7 +77,7 @@ const createFixture = () => {
 describe('TaskStealingController', () => {
   it('reports the ratio reached at the exact stealing limit', () => {
     const fixture = createFixture()
-    fixture.hooks.ratio = () => 0.5
+    fixture.callbacks.ratio = () => 0.5
     fixture.source.worker.info.continuousStealing = true
 
     expect(fixture.controller.ratioReached()).toBe(true)
@@ -92,7 +92,7 @@ describe('TaskStealingController', () => {
       fixture.source,
       fixture.destination
     )
-    expect(fixture.hooks.onStolen).toHaveBeenCalledOnce()
+    expect(fixture.callbacks.onStolen).toHaveBeenCalledOnce()
     expect(fixture.timers).toHaveLength(1)
   })
 
@@ -139,26 +139,28 @@ describe('TaskStealingController', () => {
       shouldUpdateTaskFunctionUsage: () => true,
       workerNodes: () => [fixture.destination.worker],
     })
-    fixture.hooks.resetSequence.mockImplementation((_handle, previousName) => {
-      accounting.resetSequentiallyStolen(0, previousName)
-    })
-    fixture.hooks.isIdle.mockReturnValue(false)
-    fixture.hooks.sequentiallyStolen.mockReturnValue(25)
+    fixture.callbacks.resetSequence.mockImplementation(
+      (_handle, previousName) => {
+        accounting.resetSequentiallyStolen(0, previousName)
+      }
+    )
+    fixture.callbacks.isIdle.mockReturnValue(false)
+    fixture.callbacks.sequentiallyStolen.mockReturnValue(25)
     fixture.destination.worker.info.continuousStealing = true
 
     fixture.controller.idle(fixture.destination, previousTask.name)
 
     expect(fixture.destination.worker.info.continuousStealing).toBe(false)
-    expect(fixture.hooks.resetSequence).toHaveBeenCalledOnce()
-    expect(fixture.hooks.resetSequence).toHaveBeenCalledWith(
+    expect(fixture.callbacks.resetSequence).toHaveBeenCalledOnce()
+    expect(fixture.callbacks.resetSequence).toHaveBeenCalledWith(
       fixture.destination,
       previousTask.name
     )
     expect(aggregateUsage.tasks.sequentiallyStolen).toBe(0)
     expect(taskFunctionUsage.tasks.sequentiallyStolen).toBe(0)
-    expect(fixture.hooks.updateSequence).not.toHaveBeenCalled()
+    expect(fixture.callbacks.updateSequence).not.toHaveBeenCalled()
     expect(fixture.scheduler.steal).not.toHaveBeenCalled()
-    expect(fixture.hooks.schedule).not.toHaveBeenCalled()
+    expect(fixture.callbacks.schedule).not.toHaveBeenCalled()
     expect(fixture.timers).toHaveLength(0)
   })
 
@@ -166,30 +168,30 @@ describe('TaskStealingController', () => {
     const fixture = createFixture()
     const previousTask = { name: 'default', taskId: 'previous' }
     fixture.handles.splice(0, 1)
-    fixture.hooks.sequentiallyStolen.mockReturnValue(25)
+    fixture.callbacks.sequentiallyStolen.mockReturnValue(25)
 
     fixture.controller.idle(fixture.destination, previousTask.name)
 
     expect(fixture.scheduler.steal).not.toHaveBeenCalled()
-    expect(fixture.hooks.resetSequence).not.toHaveBeenCalled()
-    expect(fixture.hooks.updateSequence).toHaveBeenCalledWith(
+    expect(fixture.callbacks.resetSequence).not.toHaveBeenCalled()
+    expect(fixture.callbacks.updateSequence).toHaveBeenCalledWith(
       fixture.destination,
       undefined,
       previousTask.name
     )
-    expect(fixture.hooks.schedule).toHaveBeenLastCalledWith(
+    expect(fixture.callbacks.schedule).toHaveBeenLastCalledWith(
       expect.any(Function),
       1_000
     )
 
     fixture.timers[0].callback()
 
-    expect(fixture.hooks.schedule).toHaveBeenCalledTimes(2)
-    expect(fixture.hooks.schedule).toHaveBeenLastCalledWith(
+    expect(fixture.callbacks.schedule).toHaveBeenCalledTimes(2)
+    expect(fixture.callbacks.schedule).toHaveBeenLastCalledWith(
       expect.any(Function),
       1_000
     )
-    expect(fixture.hooks.resetSequence).not.toHaveBeenCalled()
+    expect(fixture.callbacks.resetSequence).not.toHaveBeenCalled()
   })
 
   it('resets with the stolen task when a destination becomes busy after a no-source retry', () => {
@@ -208,24 +210,24 @@ describe('TaskStealingController', () => {
     initialTimer.callback()
 
     const retryTimer = fixture.timers[1]
-    fixture.hooks.isIdle.mockReturnValue(false)
-    fixture.hooks.sequentiallyStolen.mockReturnValue(1)
+    fixture.callbacks.isIdle.mockReturnValue(false)
+    fixture.callbacks.sequentiallyStolen.mockReturnValue(1)
     fixture.destination.worker.info.continuousStealing = true
 
     fixture.controller.idle(fixture.destination)
 
-    expect(fixture.hooks.resetSequence).toHaveBeenCalledOnce()
-    expect(fixture.hooks.resetSequence).toHaveBeenCalledWith(
+    expect(fixture.callbacks.resetSequence).toHaveBeenCalledOnce()
+    expect(fixture.callbacks.resetSequence).toHaveBeenCalledWith(
       fixture.destination,
       originalTask.name
     )
-    expect(fixture.hooks.cancel).toHaveBeenCalledWith(retryTimer)
+    expect(fixture.callbacks.cancel).toHaveBeenCalledWith(retryTimer)
     expect(fixture.destination.worker.info.continuousStealing).toBe(false)
-    expect(fixture.hooks.schedule).toHaveBeenCalledTimes(2)
+    expect(fixture.callbacks.schedule).toHaveBeenCalledTimes(2)
 
     retryTimer.callback()
 
-    expect(fixture.hooks.schedule).toHaveBeenCalledTimes(2)
+    expect(fixture.callbacks.schedule).toHaveBeenCalledTimes(2)
   })
 
   it('resets back-pressure stealing after a failed attempt and retries', () => {
@@ -239,7 +241,7 @@ describe('TaskStealingController', () => {
 
     fixture.controller.backPressure(fixture.source)
 
-    expect(fixture.hooks.onError).toHaveBeenCalledWith(stealError)
+    expect(fixture.callbacks.onError).toHaveBeenCalledWith(stealError)
     expect(fixture.destination.worker.info.backPressureStealing).toBe(false)
 
     fixture.controller.backPressure(fixture.source)

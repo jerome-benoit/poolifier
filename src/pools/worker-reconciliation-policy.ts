@@ -20,7 +20,7 @@ import {
 } from './worker-reconciliation-error-builders.js'
 import { WorkerTaskRecovery } from './worker-task-recovery.js'
 
-export interface WorkerReconciliationPolicyHooks<
+export interface WorkerReconciliationPolicyCallbacks<
   WorkerNode extends LifecycleWorker
 > {
   readonly apply: (
@@ -70,7 +70,7 @@ export class WorkerReconciliationPolicy<
   WorkerNode extends IWorkerNode<Worker, Data> = IWorkerNode<Worker, Data>
 > {
   public constructor (
-    private readonly hooks: WorkerReconciliationPolicyHooks<WorkerNode>
+    private readonly callbacks: WorkerReconciliationPolicyCallbacks<WorkerNode>
   ) {}
 
   public buildCrashError (
@@ -124,14 +124,14 @@ export class WorkerReconciliationPolicy<
   ): WorkerTaskRecovery<WorkerNode> {
     signal.throwIfAborted()
     const { handle } = input
-    const reserved = this.hooks.reserve(input.ownedTaskIds, handle.lease)
+    const reserved = this.callbacks.reserve(input.ownedTaskIds, handle.lease)
     const { attributedTaskId } = getWorkerCrashAttribution(reserved)
     return new WorkerTaskRecovery(
       input,
       reserved,
       {
         apply: result => {
-          this.hooks.apply(result, handle.lease)
+          this.callbacks.apply(result, handle.lease)
         },
         error: taskId =>
           buildWorkerReconciliationError(
@@ -140,7 +140,7 @@ export class WorkerReconciliationPolicy<
             taskId === attributedTaskId
           ),
         finalize: () => {
-          this.hooks.executionFinished(handle.lease)
+          this.callbacks.executionFinished(handle.lease)
         },
         prepare: async phaseSignal => {
           phaseSignal.throwIfAborted()
@@ -150,18 +150,18 @@ export class WorkerReconciliationPolicy<
             input.ownedTaskIds.length === 0 &&
             !handle.worker.info.dynamic
           ) {
-            this.hooks.rollbackStartup(handle.worker)
+            this.callbacks.rollbackStartup(handle.worker)
           }
-          this.hooks.detachQueued(handle)
-          this.hooks.drainPhysical(handle)
-          this.hooks.taskDequeued(handle.lease)
+          this.callbacks.detachQueued(handle)
+          this.callbacks.drainPhysical(handle)
+          this.callbacks.taskDequeued(handle.lease)
           if (input.classification === 'draining') {
-            await this.hooks.waitForDrain(handle.worker, phaseSignal)
+            await this.callbacks.waitForDrain(handle.worker, phaseSignal)
             phaseSignal.throwIfAborted()
           }
         },
         reject: (reservation, error) =>
-          this.hooks.reject(
+          this.callbacks.reject(
             reservation.taskId,
             handle.worker,
             error instanceof WorkerCrashError ||
@@ -175,7 +175,7 @@ export class WorkerReconciliationPolicy<
             handle.lease
           ),
         restore: (reservations, error) =>
-          this.hooks.restore(reservations, taskId => {
+          this.callbacks.restore(reservations, taskId => {
             const failure = error(taskId)
             return failure instanceof WorkerCrashError ||
               failure instanceof WorkerTerminationError
@@ -192,7 +192,7 @@ export class WorkerReconciliationPolicy<
           }),
       },
       input.classification === 'draining'
-        ? this.hooks.tasksFinishedTimeout()
+        ? this.callbacks.tasksFinishedTimeout()
         : undefined
     )
   }
@@ -203,11 +203,11 @@ export class WorkerReconciliationPolicy<
   ): Promise<void> {
     try {
       signal.throwIfAborted()
-      const existingWorkers = new Set(this.hooks.workers())
+      const existingWorkers = new Set(this.callbacks.workers())
       input.handle.worker.info.dynamic
-        ? this.hooks.createDynamic()
-        : this.hooks.replenishFixed()
-      const replacement = this.hooks
+        ? this.callbacks.createDynamic()
+        : this.callbacks.replenishFixed()
+      const replacement = this.callbacks
         .workers()
         .find(worker => !existingWorkers.has(worker))
       signal.throwIfAborted()
@@ -219,9 +219,9 @@ export class WorkerReconciliationPolicy<
       return Promise.resolve()
     } catch (error) {
       try {
-        this.hooks.publishError(error, input.handle.lease)
+        this.callbacks.publishError(error, input.handle.lease)
       } catch (reportingError) {
-        this.hooks.defer(reportingError, input.handle.lease)
+        this.callbacks.defer(reportingError, input.handle.lease)
       }
       // Deferred so the synchronous publishError completes before the throw propagates.
       return Promise.resolve().then(() => {
@@ -234,7 +234,7 @@ export class WorkerReconciliationPolicy<
     reservations: readonly ReconciliationReservation[],
     source: WorkerLease
   ): void {
-    const results = this.hooks.restore(
+    const results = this.callbacks.restore(
       reservations,
       taskId =>
         new WorkerTerminationError(
@@ -242,14 +242,16 @@ export class WorkerReconciliationPolicy<
           { taskId, workerId: source.id }
         )
     )
-    for (const result of results) this.hooks.apply(result, source)
+    for (const result of results) this.callbacks.apply(result, source)
   }
 
   public shouldReplace (input: WorkerReplacementInput<WorkerNode>): boolean {
-    if (!this.hooks.isRunning()) return false
+    if (!this.callbacks.isRunning()) return false
     return input.handle.worker.info.dynamic
-      ? input.classification === 'faulted' && this.hooks.restartWorkerOnError()
-      : input.classification !== 'faulted' || this.hooks.restartWorkerOnError()
+      ? input.classification === 'faulted' &&
+          this.callbacks.restartWorkerOnError()
+      : input.classification !== 'faulted' ||
+          this.callbacks.restartWorkerOnError()
   }
 
   #publishCompletionError (
@@ -277,9 +279,9 @@ export class WorkerReconciliationPolicy<
               transition.exit?.signal,
               transition.handle.worker.info.id
             )
-      this.hooks.publishError(crashError, transition.handle.lease)
+      this.callbacks.publishError(crashError, transition.handle.lease)
     } else if (firstError != null) {
-      this.hooks.publishError(firstError, transition.handle.lease)
+      this.callbacks.publishError(firstError, transition.handle.lease)
     }
   }
 }

@@ -7,7 +7,7 @@ import type {
 } from './lifecycle-types.js'
 import type { ScheduleResult } from './task-scheduler-types.js'
 
-export interface WorkerTaskRecoveryHooks<Worker> {
+export interface WorkerTaskRecoveryCallbacks<Worker> {
   readonly apply: (result: ScheduleResult<Worker>) => void
   readonly error: (
     taskId: TaskUUID,
@@ -43,7 +43,7 @@ implements WorkerReconciliationPreparation {
   public constructor (
     private readonly transition: WorkerReconciliationInput<LifecycleWorker>,
     reservations: readonly ReconciliationReservation[],
-    private readonly hooks: WorkerTaskRecoveryHooks<Worker>,
+    private readonly callbacks: WorkerTaskRecoveryCallbacks<Worker>,
     prepareTimeoutMs?: number
   ) {
     this.prepareTimeoutMs = prepareTimeoutMs
@@ -57,9 +57,9 @@ implements WorkerReconciliationPreparation {
     for (const reservation of [...this.#pending.values()]) {
       try {
         signal.throwIfAborted()
-        this.hooks.reject(
+        this.callbacks.reject(
           reservation,
-          this.hooks.error(reservation.taskId, reservation.previousState)
+          this.callbacks.error(reservation.taskId, reservation.previousState)
         )
         this.#pending.delete(reservation.taskId)
       } catch (error) {
@@ -68,7 +68,7 @@ implements WorkerReconciliationPreparation {
       }
     }
     try {
-      this.hooks.finalize()
+      this.callbacks.finalize()
     } catch (error) {
       // no-excuse-ok: catch -- settlement failures must remain observable
       failures.push(error)
@@ -83,7 +83,7 @@ implements WorkerReconciliationPreparation {
 
   public async prepare (signal: AbortSignal): Promise<unknown> {
     signal.throwIfAborted()
-    await this.hooks.prepare(signal)
+    await this.callbacks.prepare(signal)
     signal.throwIfAborted()
     let firstError: unknown
     for (const reservation of [...this.#pending.values()]) {
@@ -92,11 +92,11 @@ implements WorkerReconciliationPreparation {
       ) {
         continue
       }
-      const error = this.hooks.error(
+      const error = this.callbacks.error(
         reservation.taskId,
         reservation.previousState
       )
-      if (this.hooks.reject(reservation, error)) firstError ??= error
+      if (this.callbacks.reject(reservation, error)) firstError ??= error
       this.#pending.delete(reservation.taskId)
     }
     return firstError
@@ -106,13 +106,13 @@ implements WorkerReconciliationPreparation {
     signal.throwIfAborted()
     const recoverable = [...this.#pending.values()]
     if (recoverable.length === 0) return Promise.resolve()
-    const results = this.hooks.restore(recoverable, this.hooks.error)
+    const results = this.callbacks.restore(recoverable, this.callbacks.error)
     for (let index = 0; index < recoverable.length; index++) {
       signal.throwIfAborted()
       const reservation = recoverable[index]
       const result = results[index]
       this.#pending.delete(reservation.taskId)
-      this.hooks.apply(result)
+      this.callbacks.apply(result)
     }
     return Promise.resolve()
   }
