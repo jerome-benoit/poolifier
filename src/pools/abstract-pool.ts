@@ -90,6 +90,7 @@ import { WorkerLifecycleCoordinator } from './worker-lifecycle-coordinator.js'
 import { WorkerNode } from './worker-node.js'
 import { WorkerProvisioner } from './worker-provisioner.js'
 import { WorkerReconciliationPolicy } from './worker-reconciliation-policy.js'
+import { WorkerRestartCircuitBreaker } from './worker-restart-circuit-breaker.js'
 import { WorkerTerminalController } from './worker-terminal-controller.js'
 import {
   type IWorker,
@@ -208,6 +209,7 @@ export abstract class AbstractPool<
   protected abstract get type (): PoolType
 
   protected abstract get worker (): WorkerType
+
   private readonly eventPublisher: PoolEventPublisher
   private readonly poolLifecycle = new PoolLifecycle()
   private readonly publishedWorkerReconciliations = new WeakSet<
@@ -222,6 +224,7 @@ export abstract class AbstractPool<
   private startTimestamp?: number
 
   private readonly taskEventState: PoolTaskEventState<PoolInfo>
+
   private readonly taskFunctionBroadcaster: TaskFunctionBroadcaster<
     IWorkerNode<Worker, Data>,
     Data,
@@ -275,6 +278,8 @@ export abstract class AbstractPool<
   >
 
   private readonly workerProvisioner: WorkerProvisioner<Worker, Data>
+
+  private readonly workerRestartCircuitBreaker: WorkerRestartCircuitBreaker
 
   private readonly workerTerminalController = new WorkerTerminalController(
     this.workerLifecycleCoordinator,
@@ -346,6 +351,10 @@ export abstract class AbstractPool<
     this.opts = buildPoolOptions(
       opts,
       this.maximumNumberOfWorkers ?? this.minimumNumberOfWorkers
+    )
+    this.workerRestartCircuitBreaker = new WorkerRestartCircuitBreaker(
+      this.opts.restartPolicy?.maxRestarts,
+      this.opts.restartPolicy?.windowTime
     )
 
     this.eventPublisher = new PoolEventPublisher(
@@ -558,6 +567,7 @@ export abstract class AbstractPool<
       apply: (result, owner) => {
         this.scheduleResultAdapter.apply(result, owner)
       },
+      attemptRestart: () => this.workerRestartCircuitBreaker.attemptRestart(),
       createDynamic: () => {
         this.createAndSetupDynamicWorkerNode()
       },

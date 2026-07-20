@@ -10,6 +10,7 @@ import {
 import {
   checkValidTasksQueueOptions,
   checkValidWorkerChoiceStrategy,
+  checkValidWorkerRestartPolicyOptions,
   getDefaultTasksQueueOptions,
 } from './utils.js'
 
@@ -73,12 +74,20 @@ export const buildPoolOptions = <Worker extends IWorker>(
   if (enableTasksQueue) {
     checkValidTasksQueueOptions(opts.tasksQueueOptions)
   }
+  checkValidWorkerRestartPolicyOptions(opts.restartPolicy)
   return {
     ...opts,
     enableEvents: opts.enableEvents ?? true,
     enableTasksQueue,
     restartWorkerOnError: opts.restartWorkerOnError ?? true,
     startWorkers: opts.startWorkers ?? true,
+    ...(opts.restartPolicy != null && {
+      restartPolicy: {
+        maxRestarts: Number.POSITIVE_INFINITY,
+        windowTime: 60_000,
+        ...opts.restartPolicy,
+      },
+    }),
     ...(enableTasksQueue
       ? {
           tasksQueueOptions: {

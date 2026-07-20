@@ -27,6 +27,7 @@ export interface WorkerReconciliationPolicyCallbacks<
     result: ScheduleResult<WorkerNode>,
     owner?: WorkerLease
   ) => void
+  readonly attemptRestart: () => boolean
   readonly createDynamic: () => void
   readonly defer: (error: unknown, owner: WorkerLease) => void
   readonly detachQueued: (
@@ -247,11 +248,12 @@ export class WorkerReconciliationPolicy<
 
   public shouldReplace (input: WorkerReplacementInput<WorkerNode>): boolean {
     if (!this.callbacks.isRunning()) return false
-    return input.handle.worker.info.dynamic
-      ? input.classification === 'faulted' &&
-          this.callbacks.restartWorkerOnError()
-      : input.classification !== 'faulted' ||
-          this.callbacks.restartWorkerOnError()
+    if (input.classification === 'faulted') {
+      return (
+        this.callbacks.restartWorkerOnError() && this.callbacks.attemptRestart()
+      )
+    }
+    return !input.handle.worker.info.dynamic
   }
 
   #publishCompletionError (

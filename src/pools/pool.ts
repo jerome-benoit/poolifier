@@ -332,6 +332,13 @@ export interface PoolOptions<Worker extends IWorker> {
    */
   onlineHandler?: OnlineHandler<Worker>
   /**
+   * Bounds faulted worker replacements within a sliding time window. Prevents a
+   * crash loop (e.g. a poison task or a leaking worker) from replacing workers
+   * unboundedly; once the bound is exceeded the pool becomes unrecoverable.
+   * Disabled by default.
+   */
+  restartPolicy?: WorkerRestartPolicyOptions
+  /**
    * Restart workers after abnormal exits. A clean exit with no in-flight task
    * replenishes the pool minimum regardless of this option. A clean exit while
    * a task is in-flight is treated as abnormal and follows this option.
@@ -417,4 +424,24 @@ export interface TasksQueueOptions {
    * @defaultValue true
    */
   readonly taskStealing?: boolean
+}
+
+/**
+ * Worker restart policy options.
+ */
+export interface WorkerRestartPolicyOptions {
+  /**
+   * Maximum number of faulted worker replacements permitted within
+   * `windowTime`. Exceeding it trips the pool into an unrecoverable state.
+   * Must be a safe integer `>= 1`, or `Infinity` to disable the bound.
+   * @defaultValue `Infinity`
+   */
+  readonly maxRestarts?: number
+  /**
+   * Trailing sliding window in milliseconds over which `maxRestarts` faulted
+   * replacements are counted.
+   * Must be an integer in the range `1..2_147_483_647`.
+   * @defaultValue 60_000
+   */
+  readonly windowTime?: number
 }

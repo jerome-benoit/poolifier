@@ -4,6 +4,7 @@ export const signal = new AbortController().signal
 
 export const createCallbacks = () => ({
   apply: vi.fn(),
+  attemptRestart: vi.fn(() => true),
   createDynamic: vi.fn(),
   defer: vi.fn(),
   detachQueued: vi.fn(),

@@ -315,3 +315,30 @@ it('T13i: single worker drain restores reserved queued work through recovery', a
   expect(callbacks.executionFinished).toHaveBeenCalledOnce()
   expect(callbacks.executionFinished).toHaveBeenCalledWith(lease)
 })
+
+it('denies faulted replacement when the restart circuit breaker trips', () => {
+  const callbacks = createCallbacks()
+  callbacks.attemptRestart.mockReturnValue(false)
+  const policy = new WorkerReconciliationPolicy(callbacks)
+  const worker = { info: { dynamic: false }, usage: { tasks: {} } }
+  const input = {
+    classification: 'faulted',
+    handle: { lease: { generation: 1, id: 1 }, worker },
+  }
+
+  expect(policy.shouldReplace(input)).toBe(false)
+  expect(callbacks.attemptRestart).toHaveBeenCalledOnce()
+})
+
+it('bypasses the circuit breaker for clean-exit replenishment', () => {
+  const callbacks = createCallbacks()
+  const policy = new WorkerReconciliationPolicy(callbacks)
+  const worker = { info: { dynamic: false }, usage: { tasks: {} } }
+  const input = {
+    classification: 'exited',
+    handle: { lease: { generation: 1, id: 1 }, worker },
+  }
+
+  expect(policy.shouldReplace(input)).toBe(true)
+  expect(callbacks.attemptRestart).not.toHaveBeenCalled()
+})

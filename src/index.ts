@@ -11,6 +11,7 @@ export type {
   PoolOptions,
   PoolType,
   TasksQueueOptions,
+  WorkerRestartPolicyOptions,
 } from './pools/pool.js'
 export { PoolEvents, PoolTypes } from './pools/pool.js'
 export type {

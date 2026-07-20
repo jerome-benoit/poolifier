@@ -10,7 +10,7 @@ import {
 } from 'node:worker_threads'
 
 import type { MessageValue, Task } from '../utility-types.js'
-import type { TasksQueueOptions } from './pool.js'
+import type { TasksQueueOptions, WorkerRestartPolicyOptions } from './pool.js'
 import type { WorkerChoiceStrategiesContext } from './selection-strategies/worker-choice-strategies-context.js'
 
 import {
@@ -283,6 +283,55 @@ export const checkValidTasksQueueOptions = (
   ) {
     throw new RangeError(
       'Invalid worker node tasks stealing ratio: must be between 0 and 1'
+    )
+  }
+}
+
+export const checkValidWorkerRestartPolicyOptions = (
+  restartPolicy: undefined | WorkerRestartPolicyOptions
+): void => {
+  if (restartPolicy != null && !isPlainObject(restartPolicy)) {
+    throw new TypeError(
+      'Invalid worker restart policy options: must be a plain object'
+    )
+  }
+  if (
+    restartPolicy?.maxRestarts != null &&
+    restartPolicy.maxRestarts !== Number.POSITIVE_INFINITY &&
+    !Number.isSafeInteger(restartPolicy.maxRestarts)
+  ) {
+    throw new TypeError(
+      'Invalid worker restart policy max restarts: must be an integer or Infinity'
+    )
+  }
+  if (
+    restartPolicy?.maxRestarts != null &&
+    restartPolicy.maxRestarts !== Number.POSITIVE_INFINITY &&
+    restartPolicy.maxRestarts < 1
+  ) {
+    throw new RangeError(
+      `Invalid worker restart policy max restarts: ${restartPolicy.maxRestarts.toString()} is less than 1`
+    )
+  }
+  if (
+    restartPolicy?.windowTime != null &&
+    !Number.isSafeInteger(restartPolicy.windowTime)
+  ) {
+    throw new TypeError(
+      'Invalid worker restart policy window time: must be an integer'
+    )
+  }
+  if (restartPolicy?.windowTime != null && restartPolicy.windowTime <= 0) {
+    throw new RangeError(
+      `Invalid worker restart policy window time: ${restartPolicy.windowTime.toString()} is a negative integer or zero`
+    )
+  }
+  if (
+    restartPolicy?.windowTime != null &&
+    restartPolicy.windowTime > 2_147_483_647
+  ) {
+    throw new RangeError(
+      `Invalid worker restart policy window time: ${restartPolicy.windowTime.toString()} is greater than 2147483647`
     )
   }
 }
