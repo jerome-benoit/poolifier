@@ -35,7 +35,13 @@ export class TaskSchedulerQueue<
     for (let index = 0; index < initialSize; index++) {
       const size = source.worker.tasksQueueSize()
       if (size === 0) break
-      const task = source.worker.dequeueTask()
+      let task: Task<Data> | undefined
+      try {
+        task = source.worker.dequeueTask()
+      } catch {
+        // no-excuse-ok: catch -- queue adapters may throw arbitrary values
+        break
+      }
       if (task?.taskId != null) taskIds.push(task.taskId)
       if (source.worker.tasksQueueSize() >= size) break
     }

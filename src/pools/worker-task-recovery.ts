@@ -104,7 +104,9 @@ implements WorkerReconciliationPreparation {
 
   public restore (signal: AbortSignal): Promise<void> {
     signal.throwIfAborted()
-    const recoverable = [...this.#pending.values()]
+    const recoverable = [...this.#pending.values()].filter(reservation =>
+      isRecoverable(this.transition.classification, reservation.previousState)
+    )
     if (recoverable.length === 0) return Promise.resolve()
     const results = this.callbacks.restore(recoverable, this.callbacks.error)
     for (let index = 0; index < recoverable.length; index++) {
