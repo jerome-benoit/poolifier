@@ -15,7 +15,7 @@ interface TerminalSignalCallbacks {
 export class TerminalSignalAggregator {
   readonly #callbacks: TerminalSignalCallbacks
   #error?: Error
-  #exit?: { code: null | number; signal?: NodeJS.Signals | null }
+  #exit?: WorkerExit
   #exitCause?: unknown
   #exitFaulted = false
   #reconciliation?: Promise<WorkerReconciliationResult>
