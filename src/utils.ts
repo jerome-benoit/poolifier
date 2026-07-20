@@ -39,7 +39,7 @@ export const availableParallelism = (): number => {
  * Sleeps for the given amount of milliseconds.
  * @param ms - The amount of milliseconds to sleep.
  * @param abortSignal - Optional cancellation signal.
- * @returns A promise that resolves after the given amount of milliseconds.
+ * @returns A promise that resolves after the given amount of milliseconds, or rejects with the abort reason if `abortSignal` fires.
  * @internal
  */
 export const sleep = async (
