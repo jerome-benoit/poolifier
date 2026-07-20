@@ -12,7 +12,7 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown> extends Map<
   }
 
   public override get size (): number {
-    return [...this.effectiveKeys()].length
+    return [...this.#effectiveKeys()].length
   }
 
   #defaultName: string
@@ -52,7 +52,7 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown> extends Map<
   public override entries (): MapIterator<
     [string, TaskFunctionObject<Data, Response>]
   > {
-    return this.effectiveEntries()[Symbol.iterator]()
+    return this.#effectiveEntries()[Symbol.iterator]()
   }
 
   public override forEach (
@@ -80,7 +80,7 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown> extends Map<
   }
 
   public override keys (): MapIterator<string> {
-    return this.effectiveKeys()
+    return this.#effectiveKeys()
   }
 
   public listEffectiveProperties (): TaskFunctionProperties[] {
@@ -157,10 +157,10 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown> extends Map<
   }
 
   public override values (): MapIterator<TaskFunctionObject<Data, Response>> {
-    return this.effectiveValues()
+    return this.#effectiveValues()
   }
 
-  private * effectiveEntries (): MapIterator<
+  * #effectiveEntries (): MapIterator<
     [string, TaskFunctionObject<Data, Response>]
   > {
     const defaultTaskFunction = this.get(DEFAULT_TASK_NAME)
@@ -175,11 +175,11 @@ export class TaskFunctionLayers<Data = unknown, Response = unknown> extends Map<
     }
   }
 
-  private * effectiveKeys (): MapIterator<string> {
-    for (const [name] of this.effectiveEntries()) yield name
+  * #effectiveKeys (): MapIterator<string> {
+    for (const [name] of this.#effectiveEntries()) yield name
   }
 
-  private * effectiveValues (): MapIterator<TaskFunctionObject<Data, Response>> {
-    for (const [, taskFunction] of this.effectiveEntries()) yield taskFunction
+  * #effectiveValues (): MapIterator<TaskFunctionObject<Data, Response>> {
+    for (const [, taskFunction] of this.#effectiveEntries()) yield taskFunction
   }
 }
