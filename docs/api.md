@@ -199,7 +199,6 @@ An object with these properties:
 - `TaskUUID`, `WorkerCrashError`, and `WorkerTerminationError` are public exports. Task-related error metadata uses `TaskUUID` for `taskId`.
 - `IWorkerNode` now exposes the typed `prependOnceWorkerEventHandler` method.
 - `WorkerInfo` now exposes the `crashHandled` and `terminating` lifecycle flags.
-- `WorkerInfo.staticTaskFunctionsProperties` was removed. `taskFunctionsProperties` remains the public task-function metadata surface.
 
 ## Worker
 
