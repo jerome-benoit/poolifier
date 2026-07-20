@@ -1862,7 +1862,7 @@ export abstract class AbstractPool<
     this.sendStatisticsMessageToWorker(workerNodeKey)
     this.setTasksQueuePriority(workerNodeKey)
     this.taskEventState.checkReady()
-    for (const taskId of this.taskRegistry.takeWaitingReady(handle.lease)) {
+    for (const taskId of this.taskRegistry.snapshotWaitingReady(handle.lease)) {
       const task = this.taskRegistry.get(taskId)?.task
       if (task != null) this.handleTask(workerNodeKey, task, true)
     }

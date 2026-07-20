@@ -256,7 +256,7 @@ export class TaskRegistry<Data = unknown, Response = unknown> {
     return snapshotTasksByLease(this.#records, lease)
   }
 
-  public takeWaitingReady (lease: WorkerLease): readonly TaskUUID[] {
+  public snapshotWaitingReady (lease: WorkerLease): readonly TaskUUID[] {
     return snapshotWaitingReadyTasks(this.#records, lease)
   }
 

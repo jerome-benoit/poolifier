@@ -25,10 +25,12 @@ describe('Task registry ownership', () => {
     expect(fixture.registry.get(fixture.taskId)?.selectedLease).toBe(
       currentLease
     )
-    expect(fixture.registry.takeWaitingReady(currentLease)).toStrictEqual([
+    expect(fixture.registry.snapshotWaitingReady(currentLease)).toStrictEqual([
       fixture.taskId,
     ])
-    expect(fixture.registry.takeWaitingReady(selectedLease)).toStrictEqual([])
+    expect(fixture.registry.snapshotWaitingReady(selectedLease)).toStrictEqual(
+      []
+    )
   })
 
   it('reports active execution ownership independently from queued ownership', () => {
