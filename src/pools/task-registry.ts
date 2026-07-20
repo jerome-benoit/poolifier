@@ -19,7 +19,7 @@ import {
   hasOwnedWork,
   snapshotActiveReconciliationTaskIds,
   snapshotTasksByLease,
-  waitingReadyTasks,
+  snapshotWaitingReadyTasks,
 } from './task-registry-queries.js'
 import {
   finalizeTaskSettlement,
@@ -257,7 +257,7 @@ export class TaskRegistry<Data = unknown, Response = unknown> {
   }
 
   public takeWaitingReady (lease: WorkerLease): readonly TaskUUID[] {
-    return waitingReadyTasks(this.#records, lease)
+    return snapshotWaitingReadyTasks(this.#records, lease)
   }
 
   public transition (
@@ -291,7 +291,7 @@ export class TaskRegistry<Data = unknown, Response = unknown> {
   }
 
   public waitingReadyCount (lease: WorkerLease): number {
-    return waitingReadyTasks(this.#records, lease).length
+    return snapshotWaitingReadyTasks(this.#records, lease).length
   }
 
   #bind<Worker>(

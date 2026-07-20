@@ -68,7 +68,7 @@ export const snapshotActiveReconciliationTaskIds = <Data, Response>(
       )
     })
 
-export const waitingReadyTasks = <Data, Response>(
+export const snapshotWaitingReadyTasks = <Data, Response>(
   records: ReadonlyMap<TaskUUID, TaskRecord<Data, Response>>,
   lease: WorkerLease
 ): readonly TaskUUID[] =>
