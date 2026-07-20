@@ -164,9 +164,9 @@ export type TaskState =
   | 'reconciling'
   | 'settled'
 
-export type TaskSettlement<Response = unknown> = Readonly<
-  { kind: 'resolved'; value: Response } | { kind: 'rejected'; error: unknown }
->
+export type TaskSettlement<Response = unknown> =
+  | Readonly<{ kind: 'resolved'; value: Response }>
+  | Readonly<{ kind: 'rejected'; error: unknown }>
 
 export type TransitionResult = Readonly<{
   committed: boolean
