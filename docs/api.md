@@ -79,7 +79,7 @@ Idle workers terminated by the pool do not emit `PoolEvents.error`. Dynamic work
 Every task promise affected by a worker crash or pool-initiated termination settles. The error classes are exported from `poolifier`:
 
 - `WorkerCrashError` reports an unexpected worker exit. Its `name` is the non-writable string `WorkerCrashError`. `workerId` identifies the runtime worker, `taskId` identifies the rejected task, `exitCode` is the raw nullable exit code, `signal` is the raw nullable exit signal, and `cause` contains the original error when Node.js supplies one.
-- `WorkerTerminationError` reports pool-initiated termination before a task could settle. Its `name` is the non-writable string `WorkerTerminationError`. Pool-generated errors carry the rejected task's `taskId` and runtime `workerId`; they do not attach raw worker termination failures as `cause`. A `cause` remains available when explicitly supplied during direct construction. Raw worker termination failures surface separately through pool error handling.
+- `WorkerTerminationError` reports pool-initiated termination before a task could settle. Its `name` is the non-writable string `WorkerTerminationError`. Pool-generated errors carry the rejected task's `taskId` and runtime `workerId`; they do not attach raw worker termination failures as `cause`. A `cause` remains available when explicitly supplied during direct construction. Raw worker termination failures surface separately through the `PoolEvents.error` listener.
 
 Use `error.name` to discriminate these errors when code can receive both the CommonJS and ESM package builds. An object created by one build is not an `instanceof` the class from the other build.
 
