@@ -48,6 +48,9 @@ export interface MessageValue<Data = unknown, ErrorData = unknown>
    * - `'default'` - Set a task function as default.
    */
   readonly taskFunctionOperation?: 'add' | 'default' | 'remove'
+  /**
+   * Task function operation correlation id.
+   */
   readonly taskFunctionOperationId?: string
   /**
    * Whether the task function operation is successful or not.
