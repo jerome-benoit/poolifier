@@ -6,9 +6,9 @@ import type { PoolDegradedEvent, PoolHealthState } from './pool.js'
  * @internal
  */
 export interface PoolHealthMonitorCallbacks {
-  readonly emitDegraded: (event: PoolDegradedEvent) => void
-  readonly emitDegradedEnd: () => void
   readonly minSize: () => number
+  readonly publishDegraded: (event: PoolDegradedEvent) => void
+  readonly publishDegradedEnd: () => void
   readonly readyWorkerNodes: () => number
   readonly started: () => boolean
   readonly tripped: () => boolean
@@ -70,9 +70,9 @@ export class PoolHealthMonitor {
     }
     this.#state = next
     if (next === 'healthy') {
-      this.#callbacks.emitDegradedEnd()
+      this.#callbacks.publishDegradedEnd()
     } else {
-      this.#callbacks.emitDegraded({
+      this.#callbacks.publishDegraded({
         minSize,
         readyWorkerNodes,
         reason:

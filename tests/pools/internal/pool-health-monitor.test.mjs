@@ -13,13 +13,13 @@ const createMonitor = (overrides = {}) => {
     ...overrides,
   }
   const monitor = new PoolHealthMonitor({
-    emitDegraded: event => {
+    minSize: () => state.minSize,
+    publishDegraded: event => {
       state.degradedEvents.push(event)
     },
-    emitDegradedEnd: () => {
+    publishDegradedEnd: () => {
       state.degradedEndEvents++
     },
-    minSize: () => state.minSize,
     readyWorkerNodes: () => state.readyWorkerNodes,
     started: () => state.started,
     tripped: () => state.tripped,

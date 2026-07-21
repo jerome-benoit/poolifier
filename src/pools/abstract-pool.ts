@@ -355,13 +355,13 @@ export abstract class AbstractPool<
       this.opts.restartPolicy?.windowTime
     )
     this.poolHealthMonitor = new PoolHealthMonitor({
-      emitDegraded: event => {
+      minSize: () => this.minimumNumberOfWorkers,
+      publishDegraded: event => {
         this.publishPoolEvent(PoolEvents.degraded, event)
       },
-      emitDegradedEnd: () => {
+      publishDegradedEnd: () => {
         this.publishPoolEvent(PoolEvents.degradedEnd, undefined)
       },
-      minSize: () => this.minimumNumberOfWorkers,
       readyWorkerNodes: () => this.readyWorkerNodeCount(),
       started: () => this.started,
       tripped: () => this.workerRestartCircuitBreaker.tripped,
