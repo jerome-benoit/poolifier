@@ -52,3 +52,49 @@ it('never restores non-recoverable tasks when the prepare phase throws', async (
   expect(reject).toHaveBeenCalledOnce()
   expect(reject.mock.calls[0][0]).toStrictEqual(running)
 })
+
+it('does not re-reject already restored tasks when apply throws mid-restore', async () => {
+  const lease = { generation: 1, id: 9 }
+  const first = {
+    lease,
+    previousState: 'queued',
+    taskId: '00000000-0000-0000-0000-000000000b01',
+  }
+  const second = {
+    lease,
+    previousState: 'queued',
+    taskId: '00000000-0000-0000-0000-000000000b02',
+  }
+  const apply = vi.fn(() => {
+    throw new Error('listener boom')
+  })
+  const reject = vi.fn(() => true)
+  const restore = vi.fn(reservations =>
+    reservations.map(() => ({ kind: 'committed' }))
+  )
+  const recovery = new WorkerTaskRecovery(
+    {
+      classification: 'faulted',
+      handle: { lease, worker: { info: { dynamic: false } } },
+      ownedTaskIds: [first.taskId, second.taskId],
+      previousState: 'ready',
+    },
+    [first, second],
+    {
+      apply,
+      error: () => new Error('crash'),
+      finalize: vi.fn(),
+      prepare: () => Promise.resolve(),
+      reject,
+      restore,
+    }
+  )
+
+  await recovery.prepare(signal)
+  expect(() => recovery.restore(signal)).toThrow('listener boom')
+
+  recovery.finalizeResidual(signal)
+  expect(restore).toHaveBeenCalledOnce()
+  expect(apply).toHaveBeenCalledOnce()
+  expect(reject).not.toHaveBeenCalled()
+})

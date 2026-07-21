@@ -109,11 +109,15 @@ implements WorkerReconciliationPreparation {
     )
     if (recoverable.length === 0) return Promise.resolve()
     const results = this.callbacks.restore(recoverable, this.callbacks.error)
-    for (let index = 0; index < recoverable.length; index++) {
-      signal.throwIfAborted()
-      const reservation = recoverable[index]
-      const result = results[index]
+    // callbacks.restore has already placed these tasks, so drop them from the
+    // pending set before applying side effects: a throwing apply() must not
+    // leave a committed reservation for finalizeResidual() to reject, which
+    // would settle a restored task twice.
+    for (const reservation of recoverable) {
       this.#pending.delete(reservation.taskId)
+    }
+    for (const result of results) {
+      signal.throwIfAborted()
       this.callbacks.apply(result)
     }
     return Promise.resolve()
