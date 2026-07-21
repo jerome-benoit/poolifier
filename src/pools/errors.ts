@@ -28,10 +28,16 @@ export interface WorkerTerminationErrorOptions {
  * faulted workers. Fails fast instead of queuing tasks that can never run.
  */
 export class PoolUnrecoverableError extends Error {
-  public override readonly name = 'PoolUnrecoverableError'
   public constructor (message: string) {
     super(message)
     Object.setPrototypeOf(this, new.target.prototype)
+    // Non-writable per the documented `error.name` discrimination contract.
+    Object.defineProperty(this, 'name', {
+      configurable: false,
+      enumerable: false,
+      value: 'PoolUnrecoverableError',
+      writable: false,
+    })
   }
 }
 
