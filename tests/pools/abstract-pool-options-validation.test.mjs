@@ -1,3 +1,4 @@
+import { checkValidWorkerRestartPolicyOptions } from '../../lib/pools/utils.mjs'
 import {
   describe,
   expect,
@@ -349,6 +350,45 @@ describe('Abstract pool test suite', () => {
     ).toThrow(
       new RangeError(
         'Invalid worker restart policy window time: 2147483648 is greater than 2147483647'
+      )
+    )
+  })
+
+  it('Verify that valid worker restart policy boundaries are accepted', () => {
+    expect(() =>
+      checkValidWorkerRestartPolicyOptions({ maxRestarts: 1 })
+    ).not.toThrow()
+    expect(() =>
+      checkValidWorkerRestartPolicyOptions({ maxRestarts: 1000 })
+    ).not.toThrow()
+    expect(() =>
+      checkValidWorkerRestartPolicyOptions({
+        maxRestarts: Number.POSITIVE_INFINITY,
+      })
+    ).not.toThrow()
+    expect(() =>
+      checkValidWorkerRestartPolicyOptions({ windowTime: 1000 })
+    ).not.toThrow()
+    expect(() =>
+      checkValidWorkerRestartPolicyOptions({ windowTime: 2_147_483_647 })
+    ).not.toThrow()
+  })
+
+  it('Verify that non-finite worker restart policy options are rejected', () => {
+    expect(() =>
+      checkValidWorkerRestartPolicyOptions({
+        windowTime: Number.POSITIVE_INFINITY,
+      })
+    ).toThrow(
+      new TypeError(
+        'Invalid worker restart policy window time: must be an integer'
+      )
+    )
+    expect(() =>
+      checkValidWorkerRestartPolicyOptions({ maxRestarts: Number.NaN })
+    ).toThrow(
+      new TypeError(
+        'Invalid worker restart policy max restarts: must be an integer or Infinity'
       )
     )
   })

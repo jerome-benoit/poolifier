@@ -93,10 +93,11 @@ it('transitions to unrecoverable when the circuit breaker tripped and latches', 
 })
 
 it('stays healthy when not started even with too few ready worker nodes', () => {
-  const { monitor, state } = createMonitor({
-    readyWorkerNodes: 0,
-    started: false,
-  })
+  const { monitor, state } = createMonitor()
+  monitor.refresh()
+  expect(monitor.state).toBe('healthy')
+  state.started = false
+  state.readyWorkerNodeCount = 0
   monitor.refresh()
   expect(monitor.state).toBe('healthy')
   expect(state.degradedEvents).toHaveLength(0)
