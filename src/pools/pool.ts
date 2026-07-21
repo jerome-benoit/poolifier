@@ -240,7 +240,7 @@ export interface PoolDegradedEvent {
 }
 
 /**
- * Reason for which a pool health transitioned to a non-healthy state.
+ * Reason the pool health transitions away from healthy.
  *
  * - `'belowMinimum'`: The number of ready worker nodes dropped below the pool minimum size.
  * - `'circuitBreakerTripped'`: The worker restart circuit breaker tripped, rendering the pool unrecoverable.
