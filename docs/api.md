@@ -172,8 +172,8 @@ An object with these properties:
   Default: `true`
 - `restartPolicy` (optional) - Bounds faulted worker replacements within a sliding time window to contain crash loops (e.g. a poison task or a leaking worker). Disabled by default. Once the bound is exceeded the pool becomes unrecoverable: it stops replacing faulted workers, emits `PoolEvents.degraded`, and `execute`/`mapExecute` reject with `PoolUnrecoverableError`.
   Properties:
-  - `maxRestarts` (optional) - Maximum number of faulted worker replacements permitted within `windowTime`. It must be a safe integer `>= 1`, or `Infinity` to disable the bound. Default: `Infinity`.
-  - `windowTime` (optional) - Trailing sliding window in milliseconds over which `maxRestarts` faulted replacements are counted. It must be an integer in `1..2_147_483_647`. Default: `60000`.
+  - `maxRestarts` (optional) - Maximum number of faulted worker replacements permitted within `windowTime`. It must be a safe integer in `1..1000`, or `Infinity` to disable the bound. Default: `Infinity`.
+  - `windowTime` (optional) - Trailing sliding window in milliseconds over which `maxRestarts` faulted replacements are counted. It must be an integer in `1000..2_147_483_647`. Default: `60000`.
 - `enableEvents` (optional) - Pool events integrated with async resource emission enablement.  
   Default: `true`
 - `enableTasksQueue` (optional) - Tasks queue per worker enablement in this pool.  

@@ -471,14 +471,15 @@ export interface WorkerRestartPolicyOptions {
   /**
    * Maximum number of faulted worker replacements permitted within
    * `windowTime`. Exceeding it trips the pool into an unrecoverable state.
-   * Must be a safe integer `>= 1`, or `Infinity` to disable the bound.
+   * Must be a safe integer in the range `1..1000`, or `Infinity` to disable
+   * the bound.
    * @defaultValue `Infinity`
    */
   readonly maxRestarts?: number
   /**
    * Trailing sliding window in milliseconds over which `maxRestarts` faulted
    * replacements are counted.
-   * Must be an integer in the range `1..2_147_483_647`.
+   * Must be an integer in the range `1000..2_147_483_647`.
    * @defaultValue 60_000
    */
   readonly windowTime?: number

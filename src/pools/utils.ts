@@ -314,6 +314,15 @@ export const checkValidWorkerRestartPolicyOptions = (
     )
   }
   if (
+    restartPolicy?.maxRestarts != null &&
+    restartPolicy.maxRestarts !== Number.POSITIVE_INFINITY &&
+    restartPolicy.maxRestarts > 1000
+  ) {
+    throw new RangeError(
+      `Invalid worker restart policy max restarts: ${restartPolicy.maxRestarts.toString()} is greater than 1000`
+    )
+  }
+  if (
     restartPolicy?.windowTime != null &&
     !Number.isSafeInteger(restartPolicy.windowTime)
   ) {
@@ -321,9 +330,9 @@ export const checkValidWorkerRestartPolicyOptions = (
       'Invalid worker restart policy window time: must be an integer'
     )
   }
-  if (restartPolicy?.windowTime != null && restartPolicy.windowTime <= 0) {
+  if (restartPolicy?.windowTime != null && restartPolicy.windowTime < 1000) {
     throw new RangeError(
-      `Invalid worker restart policy window time: ${restartPolicy.windowTime.toString()} is a negative integer or zero`
+      `Invalid worker restart policy window time: ${restartPolicy.windowTime.toString()} is less than 1000`
     )
   }
   if (

@@ -301,6 +301,20 @@ describe('Abstract pool test suite', () => {
           numberOfWorkers,
           './tests/worker-files/thread/testWorker.mjs',
           {
+            restartPolicy: { maxRestarts: 1001 },
+          }
+        )
+    ).toThrow(
+      new RangeError(
+        'Invalid worker restart policy max restarts: 1001 is greater than 1000'
+      )
+    )
+    expect(
+      () =>
+        new FixedThreadPool(
+          numberOfWorkers,
+          './tests/worker-files/thread/testWorker.mjs',
+          {
             restartPolicy: { windowTime: 0.2 },
           }
         )
@@ -315,12 +329,12 @@ describe('Abstract pool test suite', () => {
           numberOfWorkers,
           './tests/worker-files/thread/testWorker.mjs',
           {
-            restartPolicy: { windowTime: 0 },
+            restartPolicy: { windowTime: 999 },
           }
         )
     ).toThrow(
       new RangeError(
-        'Invalid worker restart policy window time: 0 is a negative integer or zero'
+        'Invalid worker restart policy window time: 999 is less than 1000'
       )
     )
     expect(
