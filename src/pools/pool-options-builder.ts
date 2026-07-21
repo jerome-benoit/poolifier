@@ -82,11 +82,7 @@ export const buildPoolOptions = <Worker extends IWorker>(
     restartWorkerOnError: opts.restartWorkerOnError ?? true,
     startWorkers: opts.startWorkers ?? true,
     ...(opts.restartPolicy != null && {
-      restartPolicy: {
-        maxRestarts: Number.POSITIVE_INFINITY,
-        windowTime: 60_000,
-        ...opts.restartPolicy,
-      },
+      restartPolicy: { ...opts.restartPolicy },
     }),
     ...(enableTasksQueue
       ? {
