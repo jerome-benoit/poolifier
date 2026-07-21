@@ -203,7 +203,7 @@ An object with these properties:
 - `ExitHandler` now receives `(exitCode: number | null, signal?: NodeJS.Signals | null)`. Thread workers pass the raw exit code. Cluster workers preserve the raw Node.js code and signal values.
 - `PromiseResponseWrapper.workerId` replaces `PromiseResponseWrapper.workerNodeKey`. `workerId` is the stable runtime worker identity bound to the in-flight task.
 - `TaskUUID`, `WorkerCrashError`, `WorkerTerminationError`, and `PoolUnrecoverableError` are public exports. Task-related error metadata uses `TaskUUID` for `taskId`.
-- `restartPolicy` pool option, the `PoolEvents.degraded`/`PoolEvents.degradedEnd` events, and `PoolUnrecoverableError` add crash-loop containment: faulted worker replacements are bounded, an unrecoverable pool is signalled, and submissions to it fail fast.
+- `restartPolicy` pool option, the `PoolEvents.degraded`/`PoolEvents.degradedEnd` events, and `PoolUnrecoverableError` add crash-loop containment: faulted worker replacements are bounded, an unrecoverable pool is signaled, and submissions to it fail fast.
 - `IWorkerNode` now exposes the typed `prependOnceWorkerEventHandler` method.
 - `WorkerInfo` now exposes the `crashHandled` and `terminating` lifecycle flags.
 
