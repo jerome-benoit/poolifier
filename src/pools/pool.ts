@@ -229,10 +229,10 @@ export interface IPool<
  * transitions away from healthy.
  */
 export interface PoolDegradedEvent {
-  /** Number of ready worker nodes at the time of the transition. */
-  readonly healthyWorkerNodes: number
   /** Pool minimum size. */
   readonly minSize: number
+  /** Number of ready worker nodes at the time of the transition. */
+  readonly readyWorkerNodes: number
   /** Reason for the transition. */
   readonly reason: PoolDegradedReason
   /** Whether the pool has become unrecoverable (circuit breaker tripped). */

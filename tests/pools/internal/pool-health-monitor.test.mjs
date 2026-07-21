@@ -49,8 +49,8 @@ it('transitions to degraded only after reaching minimum then dropping below it',
   expect(monitor.unrecoverable).toBe(false)
   expect(state.degradedEvents).toStrictEqual([
     {
-      healthyWorkerNodes: 1,
       minSize: 2,
+      readyWorkerNodes: 1,
       reason: 'belowMinimum',
       unrecoverable: false,
     },
@@ -77,8 +77,8 @@ it('transitions to unrecoverable when the circuit breaker tripped and latches', 
   expect(monitor.unrecoverable).toBe(true)
   expect(state.degradedEvents).toStrictEqual([
     {
-      healthyWorkerNodes: 2,
       minSize: 2,
+      readyWorkerNodes: 2,
       reason: 'circuitBreakerTripped',
       unrecoverable: true,
     },

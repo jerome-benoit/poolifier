@@ -73,8 +73,8 @@ export class PoolHealthMonitor {
       this.#callbacks.emitDegradedEnd()
     } else {
       this.#callbacks.emitDegraded({
-        healthyWorkerNodes: readyWorkerNodes,
         minSize,
+        readyWorkerNodes,
         reason:
           next === 'unrecoverable' ? 'circuitBreakerTripped' : 'belowMinimum',
         unrecoverable: next === 'unrecoverable',
