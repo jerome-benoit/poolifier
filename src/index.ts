@@ -3,9 +3,15 @@ export type { AbstractPool } from './pools/abstract-pool.js'
 export { DynamicClusterPool } from './pools/cluster/dynamic.js'
 export type { ClusterPoolOptions } from './pools/cluster/fixed.js'
 export { FixedClusterPool } from './pools/cluster/fixed.js'
-export { WorkerCrashError, WorkerTerminationError } from './pools/errors.js'
+export {
+  PoolUnrecoverableError,
+  WorkerCrashError,
+  WorkerTerminationError,
+} from './pools/errors.js'
 export type {
   IPool,
+  PoolDegradedEvent,
+  PoolDegradedReason,
   PoolEvent,
   PoolInfo,
   PoolOptions,

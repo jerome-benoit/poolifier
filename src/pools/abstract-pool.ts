@@ -34,8 +34,13 @@ import {
   sleep,
 } from '../utils.js'
 import { KillBehaviors } from '../worker/worker-options.js'
-import { type WorkerCrashError, WorkerTerminationError } from './errors.js'
+import {
+  PoolUnrecoverableError,
+  type WorkerCrashError,
+  WorkerTerminationError,
+} from './errors.js'
 import { PoolEventPublisher } from './pool-event-publisher.js'
+import { PoolHealthMonitor } from './pool-health-monitor.js'
 import { collectLifecycleFailures, PoolLifecycle } from './pool-lifecycle.js'
 import {
   buildPoolOptions,
@@ -211,7 +216,9 @@ export abstract class AbstractPool<
   protected abstract get worker (): WorkerType
 
   private readonly eventPublisher: PoolEventPublisher
+  private readonly poolHealthMonitor: PoolHealthMonitor
   private readonly poolLifecycle = new PoolLifecycle()
+
   private readonly publishedWorkerReconciliations = new WeakSet<
     Promise<WorkerReconciliationResult>
   >()
@@ -297,17 +304,8 @@ export abstract class AbstractPool<
   )
 
   private get ready (): boolean {
-    if (!this.started) {
-      return false
-    }
     return (
-      this.workerNodes.reduce(
-        (accumulator, workerNode) =>
-          !workerNode.info.dynamic && workerNode.info.ready
-            ? accumulator + 1
-            : accumulator,
-        0
-      ) >= this.minimumNumberOfWorkers
+      this.started && this.readyWorkerNodeCount() >= this.minimumNumberOfWorkers
     )
   }
 
@@ -356,6 +354,21 @@ export abstract class AbstractPool<
       this.opts.restartPolicy?.maxRestarts,
       this.opts.restartPolicy?.windowTime
     )
+    this.poolHealthMonitor = new PoolHealthMonitor({
+      emitDegraded: event => {
+        this.publishPoolEvent(PoolEvents.degraded, event)
+      },
+      emitDegradedEnd: () => {
+        this.publishPoolEvent(PoolEvents.degradedEnd, undefined)
+      },
+      minSize: () => this.minimumNumberOfWorkers,
+      readyWorkerNodes: () => this.readyWorkerNodeCount(),
+      started: () => this.started,
+      tripped: () => this.workerRestartCircuitBreaker.tripped,
+    })
+    this.workerLifecycleCoordinator.subscribeTopologyChanges(() => {
+      this.poolHealthMonitor.refresh()
+    })
 
     this.eventPublisher = new PoolEventPublisher(
       'poolifier:pool',
@@ -1929,6 +1942,10 @@ export abstract class AbstractPool<
           if (!this.started) {
             throw new WorkerTerminationError('Worker node terminated by pool')
           }
+          this.poolHealthMonitor.refresh()
+          if (this.poolHealthMonitor.unrecoverable) {
+            throw new PoolUnrecoverableError('Pool has no recoverable worker')
+          }
           const taskId = randomUUID()
           const task: Task<Data> & { readonly taskId: TaskUUID } = {
             abortable: abortSignal != null,
@@ -2027,6 +2044,16 @@ export abstract class AbstractPool<
     const workerNode = this.workerNodes[workerNodeKey]
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     return workerNode?.info.ready ? workerNode : undefined
+  }
+
+  private readyWorkerNodeCount (): number {
+    return this.workerNodes.reduce(
+      (accumulator, workerNode) =>
+        !workerNode.info.dynamic && workerNode.info.ready
+          ? accumulator + 1
+          : accumulator,
+      0
+    )
   }
 
   private rejectOwnedTasks (

@@ -23,6 +23,19 @@ export interface WorkerTerminationErrorOptions {
 }
 
 /**
+ * Raised when a task is submitted to a pool that has become unrecoverable, i.e.
+ * its worker restart circuit breaker has tripped and it can no longer replace
+ * faulted workers. Fails fast instead of queuing tasks that can never run.
+ */
+export class PoolUnrecoverableError extends Error {
+  public override readonly name = 'PoolUnrecoverableError'
+  public constructor (message: string) {
+    super(message)
+    Object.setPrototypeOf(this, new.target.prototype)
+  }
+}
+
+/**
  * Raised when a task promise is rejected because its assigned worker exited
  * abnormally. Abnormal exits include worker errors, signal exits, nonzero exit
  * codes, and exit code `0` while the worker still owns an in-flight task.

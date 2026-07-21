@@ -51,6 +51,8 @@ export const PoolEvents: Readonly<{
   backPressureEnd: 'backPressureEnd'
   busy: 'busy'
   busyEnd: 'busyEnd'
+  degraded: 'degraded'
+  degradedEnd: 'degradedEnd'
   destroy: 'destroy'
   empty: 'empty'
   error: 'error'
@@ -63,6 +65,8 @@ export const PoolEvents: Readonly<{
   backPressureEnd: 'backPressureEnd',
   busy: 'busy',
   busyEnd: 'busyEnd',
+  degraded: 'degraded',
+  degradedEnd: 'degradedEnd',
   destroy: 'destroy',
   empty: 'empty',
   error: 'error',
@@ -118,6 +122,8 @@ export interface IPool<
    * - `'taskError'`: Emitted when an error occurs while executing a task.
    * - `'backPressure'`: Emitted when the number of workers created in the pool has reached the maximum size expected and are back pressured (i.e. their tasks queue is full: queue size \>= maximum queue size).
    * - `'backPressureEnd'`: Emitted when the number of workers created in the pool has reached the maximum size expected and are no longer back pressured (i.e. their tasks queue is no longer full: queue size \< maximum queue size).
+   * - `'degraded'`: Emitted with a `PoolDegradedEvent` when the pool health transitions away from healthy, either because the number of ready worker nodes dropped below the minimum size or because the worker restart circuit breaker tripped (rendering the pool unrecoverable).
+   * - `'degradedEnd'`: Emitted when the pool health recovers back to healthy.
    */
   readonly emitter?: EventEmitterAsyncResource
   /**
@@ -219,9 +225,41 @@ export interface IPool<
 }
 
 /**
+ * Payload emitted with the `'degraded'` pool event when the pool health
+ * transitions away from healthy.
+ */
+export interface PoolDegradedEvent {
+  /** Number of ready worker nodes at the time of the transition. */
+  readonly healthyWorkerNodes: number
+  /** Pool minimum size. */
+  readonly minSize: number
+  /** Reason for the transition. */
+  readonly reason: PoolDegradedReason
+  /** Whether the pool has become unrecoverable (circuit breaker tripped). */
+  readonly unrecoverable: boolean
+}
+
+/**
+ * Reason for which a pool health transitioned to a non-healthy state.
+ *
+ * - `'belowMinimum'`: The number of ready worker nodes dropped below the pool minimum size.
+ * - `'circuitBreakerTripped'`: The worker restart circuit breaker tripped, rendering the pool unrecoverable.
+ */
+export type PoolDegradedReason = 'belowMinimum' | 'circuitBreakerTripped'
+
+/**
  * Pool event.
  */
 export type PoolEvent = keyof typeof PoolEvents
+
+/**
+ * Pool health state.
+ *
+ * - `'healthy'`: The pool has at least its minimum number of ready worker nodes and the worker restart circuit breaker has not tripped.
+ * - `'degraded'`: The pool is started but the number of ready worker nodes dropped below its minimum size.
+ * - `'unrecoverable'`: The worker restart circuit breaker tripped; the pool can no longer replace faulted workers. Latched.
+ */
+export type PoolHealthState = 'degraded' | 'healthy' | 'unrecoverable'
 
 /**
  * Pool information.
