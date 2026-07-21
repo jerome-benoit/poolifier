@@ -44,7 +44,7 @@ export class PoolHealthMonitor {
    * publishes a transition when it changes. No-ops once unrecoverable (latched)
    * and when the recomputed state matches the current one. A pool that has not
    * yet reached its minimum ready worker nodes for the first time is not
-   * reported as degraded, so the initial startup ramp does not emit a spurious
+   * reported as degraded, so the initial startup ramp does not publish a spurious
    * transition.
    */
   public refresh (): void {
