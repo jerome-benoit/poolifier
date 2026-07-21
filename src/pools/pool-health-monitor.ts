@@ -32,9 +32,7 @@ export class PoolHealthMonitor {
   }
 
   readonly #callbacks: PoolHealthMonitorCallbacks
-
   #everReady = false
-
   #state: PoolHealthState = 'healthy'
 
   public constructor (callbacks: PoolHealthMonitorCallbacks) {

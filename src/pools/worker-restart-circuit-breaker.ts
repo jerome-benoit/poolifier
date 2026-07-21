@@ -13,7 +13,6 @@ export class WorkerRestartCircuitBreaker {
   readonly #maxRestarts: number
   readonly #timestamps: number[] = []
   #tripped = false
-
   readonly #windowTime: number
 
   public constructor (
