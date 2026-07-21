@@ -89,7 +89,9 @@ For cluster workers, `exitCode` and `signal` preserve Node.js exit-event semanti
 
 `restartWorkerOnError` controls replacement after an abnormal exit. When it is `true`, the pool replaces an abnormally exited worker as needed to restore its minimum size. When it is `false`, the pool does not replace that worker. A clean code `0` exit with no in-flight task is not an error and replenishes the pool minimum regardless of this option. A code `0` exit with an in-flight task is abnormal and follows the option.
 
-For an observed crash, the `PoolEvents.error` listener receives one `WorkerCrashError` with no `taskId`; its `cause` holds the original Node.js error when Node.js supplies it. Each affected task promise receives a distinct `WorkerCrashError` with its own `taskId`. Raw crash details (`cause`, `exitCode`, `signal`) reach a task error only when the worker owns exactly one active task; otherwise the task error omits them. Each task promise settles exactly once. Recoverable queued tasks are redistributed to ready peer workers.
+`restartPolicy` bounds faulted worker replacements. More than `maxRestarts` faulted replacements within `windowTime` trip the pool into an unrecoverable state: faulted workers are no longer replaced, `PoolEvents.degraded` is emitted with a `PoolDegradedEvent`, and further `execute`/`mapExecute` submissions reject with `PoolUnrecoverableError` instead of queuing indefinitely. Independently of the circuit breaker, the pool emits `PoolEvents.degraded` when its ready worker nodes drop below the minimum size and `PoolEvents.degradedEnd` when they recover.
+
+For an observed crash, the `PoolEvents.error` listener receives one `WorkerCrashError` with no `taskId`; its `cause` holds the original Node.js error when Node.js supplies it. Each affected task promise receives a distinct `WorkerCrashError` with its own `taskId`. Raw crash details (`cause`, `exitCode`, `signal`) reach a task error only when the worker owns exactly one active task; otherwise the task error omits them. Each task promise settles exactly once. Recoverable queued tasks are redistributed to ready peer workers once the crashed worker's transport has drained, which may take up to the termination grace period.
 
 The `errorHandler`, `exitHandler`, and `PoolEvents.error` callbacks are synchronous. A throw in any of them is rethrown asynchronously exactly once after task settlement and cleanup complete; it does not replace the typed task rejection.
 
@@ -168,6 +170,10 @@ An object with these properties:
   Default: `true`
 - `restartWorkerOnError` (optional) - Restart workers after abnormal exits. A clean exit with no in-flight task replenishes the pool minimum regardless of this option. A clean exit while a task is in-flight is treated as abnormal and follows this option.
   Default: `true`
+- `restartPolicy` (optional) - Bounds faulted worker replacements within a sliding time window to contain crash loops (e.g. a poison task or a leaking worker). Disabled by default. Once the bound is exceeded the pool becomes unrecoverable: it stops replacing faulted workers, emits `PoolEvents.degraded`, and `execute`/`mapExecute` reject with `PoolUnrecoverableError`.
+  Properties:
+  - `maxRestarts` (optional) - Maximum number of faulted worker replacements permitted within `windowTime`. It must be a safe integer `>= 1`, or `Infinity` to disable the bound. Default: `Infinity`.
+  - `windowTime` (optional) - Trailing sliding window in milliseconds over which `maxRestarts` faulted replacements are counted. It must be an integer in `1..2_147_483_647`. Default: `60000`.
 - `enableEvents` (optional) - Pool events integrated with async resource emission enablement.  
   Default: `true`
 - `enableTasksQueue` (optional) - Tasks queue per worker enablement in this pool.  
@@ -196,7 +202,8 @@ An object with these properties:
 
 - `ExitHandler` now receives `(exitCode: number | null, signal?: NodeJS.Signals | null)`. Thread workers pass the raw exit code. Cluster workers preserve the raw Node.js code and signal values.
 - `PromiseResponseWrapper.workerId` replaces `PromiseResponseWrapper.workerNodeKey`. `workerId` is the stable runtime worker identity bound to the in-flight task.
-- `TaskUUID`, `WorkerCrashError`, and `WorkerTerminationError` are public exports. Task-related error metadata uses `TaskUUID` for `taskId`.
+- `TaskUUID`, `WorkerCrashError`, `WorkerTerminationError`, and `PoolUnrecoverableError` are public exports. Task-related error metadata uses `TaskUUID` for `taskId`.
+- `restartPolicy` pool option, the `PoolEvents.degraded`/`PoolEvents.degradedEnd` events, and `PoolUnrecoverableError` add crash-loop containment: faulted worker replacements are bounded, an unrecoverable pool is signalled, and submissions to it fail fast.
 - `IWorkerNode` now exposes the typed `prependOnceWorkerEventHandler` method.
 - `WorkerInfo` now exposes the `crashHandled` and `terminating` lifecycle flags.
 
