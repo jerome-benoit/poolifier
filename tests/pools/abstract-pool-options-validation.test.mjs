@@ -251,4 +251,91 @@ describe('Abstract pool test suite', () => {
       )
     )
   })
+
+  it('Verify that worker restart policy options are validated', () => {
+    expect(
+      () =>
+        new FixedThreadPool(
+          numberOfWorkers,
+          './tests/worker-files/thread/testWorker.mjs',
+          {
+            restartPolicy: 'invalidRestartPolicy',
+          }
+        )
+    ).toThrow(
+      new TypeError(
+        'Invalid worker restart policy options: must be a plain object'
+      )
+    )
+    expect(
+      () =>
+        new FixedThreadPool(
+          numberOfWorkers,
+          './tests/worker-files/thread/testWorker.mjs',
+          {
+            restartPolicy: { maxRestarts: 0.2 },
+          }
+        )
+    ).toThrow(
+      new TypeError(
+        'Invalid worker restart policy max restarts: must be an integer or Infinity'
+      )
+    )
+    expect(
+      () =>
+        new FixedThreadPool(
+          numberOfWorkers,
+          './tests/worker-files/thread/testWorker.mjs',
+          {
+            restartPolicy: { maxRestarts: 0 },
+          }
+        )
+    ).toThrow(
+      new RangeError(
+        'Invalid worker restart policy max restarts: 0 is less than 1'
+      )
+    )
+    expect(
+      () =>
+        new FixedThreadPool(
+          numberOfWorkers,
+          './tests/worker-files/thread/testWorker.mjs',
+          {
+            restartPolicy: { windowTime: 0.2 },
+          }
+        )
+    ).toThrow(
+      new TypeError(
+        'Invalid worker restart policy window time: must be an integer'
+      )
+    )
+    expect(
+      () =>
+        new FixedThreadPool(
+          numberOfWorkers,
+          './tests/worker-files/thread/testWorker.mjs',
+          {
+            restartPolicy: { windowTime: 0 },
+          }
+        )
+    ).toThrow(
+      new RangeError(
+        'Invalid worker restart policy window time: 0 is a negative integer or zero'
+      )
+    )
+    expect(
+      () =>
+        new FixedThreadPool(
+          numberOfWorkers,
+          './tests/worker-files/thread/testWorker.mjs',
+          {
+            restartPolicy: { windowTime: 2_147_483_648 },
+          }
+        )
+    ).toThrow(
+      new RangeError(
+        'Invalid worker restart policy window time: 2147483648 is greater than 2147483647'
+      )
+    )
+  })
 })
