@@ -362,7 +362,7 @@ export abstract class AbstractPool<
       publishDegradedEnd: () => {
         this.publishPoolEvent(PoolEvents.degradedEnd, undefined)
       },
-      readyWorkerNodes: () => this.readyWorkerNodeCount(),
+      readyWorkerNodeCount: () => this.readyWorkerNodeCount(),
       started: () => this.started,
       tripped: () => this.workerRestartCircuitBreaker.tripped,
     })

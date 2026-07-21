@@ -9,7 +9,7 @@ export interface PoolHealthMonitorCallbacks {
   readonly minSize: () => number
   readonly publishDegraded: (event: PoolDegradedEvent) => void
   readonly publishDegradedEnd: () => void
-  readonly readyWorkerNodes: () => number
+  readonly readyWorkerNodeCount: () => number
   readonly started: () => boolean
   readonly tripped: () => boolean
 }
@@ -51,16 +51,16 @@ export class PoolHealthMonitor {
     if (this.#state === 'unrecoverable') {
       return
     }
-    const readyWorkerNodes = this.#callbacks.readyWorkerNodes()
+    const readyWorkerNodeCount = this.#callbacks.readyWorkerNodeCount()
     const minSize = this.#callbacks.minSize()
-    if (readyWorkerNodes >= minSize) {
+    if (readyWorkerNodeCount >= minSize) {
       this.#everReady = true
     }
     const next: PoolHealthState = this.#callbacks.tripped()
       ? 'unrecoverable'
       : this.#callbacks.started() &&
           this.#everReady &&
-          readyWorkerNodes < minSize
+          readyWorkerNodeCount < minSize
         ? 'degraded'
         : 'healthy'
     if (next === this.#state) {
@@ -72,7 +72,7 @@ export class PoolHealthMonitor {
     } else {
       this.#callbacks.publishDegraded({
         minSize,
-        readyWorkerNodes,
+        readyWorkerNodeCount,
         reason:
           next === 'unrecoverable' ? 'circuitBreakerTripped' : 'belowMinimum',
         unrecoverable: next === 'unrecoverable',

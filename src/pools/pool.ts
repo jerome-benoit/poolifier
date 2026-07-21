@@ -232,7 +232,7 @@ export interface PoolDegradedEvent {
   /** Pool minimum size. */
   readonly minSize: number
   /** Number of ready worker nodes at the time of the transition. */
-  readonly readyWorkerNodes: number
+  readonly readyWorkerNodeCount: number
   /** Reason for the transition. */
   readonly reason: PoolDegradedReason
   /** Whether the pool has become unrecoverable (circuit breaker tripped). */

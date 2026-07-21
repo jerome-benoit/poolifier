@@ -7,7 +7,7 @@ const createMonitor = (overrides = {}) => {
     degradedEndEvents: 0,
     degradedEvents: [],
     minSize: 2,
-    readyWorkerNodes: 2,
+    readyWorkerNodeCount: 2,
     started: true,
     tripped: false,
     ...overrides,
@@ -20,7 +20,7 @@ const createMonitor = (overrides = {}) => {
     publishDegradedEnd: () => {
       state.degradedEndEvents++
     },
-    readyWorkerNodes: () => state.readyWorkerNodes,
+    readyWorkerNodeCount: () => state.readyWorkerNodeCount,
     started: () => state.started,
     tripped: () => state.tripped,
   })
@@ -28,11 +28,11 @@ const createMonitor = (overrides = {}) => {
 }
 
 it('does not emit degraded during the startup ramp before reaching minimum', () => {
-  const { monitor, state } = createMonitor({ readyWorkerNodes: 0 })
+  const { monitor, state } = createMonitor({ readyWorkerNodeCount: 0 })
   monitor.refresh()
-  state.readyWorkerNodes = 1
+  state.readyWorkerNodeCount = 1
   monitor.refresh()
-  state.readyWorkerNodes = 2
+  state.readyWorkerNodeCount = 2
   monitor.refresh()
   expect(monitor.state).toBe('healthy')
   expect(state.degradedEvents).toHaveLength(0)
@@ -43,14 +43,14 @@ it('transitions to degraded only after reaching minimum then dropping below it',
   const { monitor, state } = createMonitor()
   monitor.refresh()
   expect(monitor.state).toBe('healthy')
-  state.readyWorkerNodes = 1
+  state.readyWorkerNodeCount = 1
   monitor.refresh()
   expect(monitor.state).toBe('degraded')
   expect(monitor.unrecoverable).toBe(false)
   expect(state.degradedEvents).toStrictEqual([
     {
       minSize: 2,
-      readyWorkerNodes: 1,
+      readyWorkerNodeCount: 1,
       reason: 'belowMinimum',
       unrecoverable: false,
     },
@@ -60,10 +60,10 @@ it('transitions to degraded only after reaching minimum then dropping below it',
 it('transitions from degraded back to healthy and emits degradedEnd', () => {
   const { monitor, state } = createMonitor()
   monitor.refresh()
-  state.readyWorkerNodes = 1
+  state.readyWorkerNodeCount = 1
   monitor.refresh()
   expect(monitor.state).toBe('degraded')
-  state.readyWorkerNodes = 2
+  state.readyWorkerNodeCount = 2
   monitor.refresh()
   expect(monitor.state).toBe('healthy')
   expect(state.degradedEndEvents).toBe(1)
@@ -78,13 +78,13 @@ it('transitions to unrecoverable when the circuit breaker tripped and latches', 
   expect(state.degradedEvents).toStrictEqual([
     {
       minSize: 2,
-      readyWorkerNodes: 2,
+      readyWorkerNodeCount: 2,
       reason: 'circuitBreakerTripped',
       unrecoverable: true,
     },
   ])
   state.tripped = false
-  state.readyWorkerNodes = 2
+  state.readyWorkerNodeCount = 2
   monitor.refresh()
   expect(monitor.state).toBe('unrecoverable')
   expect(monitor.unrecoverable).toBe(true)
@@ -106,7 +106,7 @@ it('stays healthy when not started even with too few ready worker nodes', () => 
 it('does not emit again when refresh is called repeatedly in the same state', () => {
   const { monitor, state } = createMonitor()
   monitor.refresh()
-  state.readyWorkerNodes = 1
+  state.readyWorkerNodeCount = 1
   monitor.refresh()
   monitor.refresh()
   monitor.refresh()
@@ -120,7 +120,7 @@ it('re-arms startup-ramp masking after reset so a restart ramp is not degraded',
   monitor.refresh()
   expect(monitor.state).toBe('healthy')
   monitor.reset()
-  state.readyWorkerNodes = 1
+  state.readyWorkerNodeCount = 1
   monitor.refresh()
   expect(monitor.state).toBe('healthy')
   expect(state.degradedEvents).toHaveLength(0)
