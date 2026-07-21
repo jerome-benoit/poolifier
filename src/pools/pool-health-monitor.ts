@@ -33,6 +33,8 @@ export class PoolHealthMonitor {
 
   readonly #callbacks: PoolHealthMonitorCallbacks
 
+  #everReady = false
+
   #state: PoolHealthState = 'healthy'
 
   public constructor (callbacks: PoolHealthMonitorCallbacks) {
@@ -42,7 +44,10 @@ export class PoolHealthMonitor {
   /**
    * Recomputes the pool health state from the current pool topology and
    * publishes a transition when it changes. No-ops once unrecoverable (latched)
-   * and when the recomputed state matches the current one.
+   * and when the recomputed state matches the current one. A pool that has not
+   * yet reached its minimum ready worker nodes for the first time is not
+   * reported as degraded, so the initial startup ramp does not emit a spurious
+   * transition.
    */
   public refresh (): void {
     if (this.#state === 'unrecoverable') {
@@ -50,9 +55,14 @@ export class PoolHealthMonitor {
     }
     const readyWorkerNodes = this.#callbacks.readyWorkerNodes()
     const minSize = this.#callbacks.minSize()
+    if (readyWorkerNodes >= minSize) {
+      this.#everReady = true
+    }
     const next: PoolHealthState = this.#callbacks.tripped()
       ? 'unrecoverable'
-      : this.#callbacks.started() && readyWorkerNodes < minSize
+      : this.#callbacks.started() &&
+          this.#everReady &&
+          readyWorkerNodes < minSize
         ? 'degraded'
         : 'healthy'
     if (next === this.#state) {

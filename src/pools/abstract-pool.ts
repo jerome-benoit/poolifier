@@ -1882,6 +1882,7 @@ export abstract class AbstractPool<
       return this.rollbackWorkerNodeSetup(workerNode, handle, setupError)
     }
     workerNode.info.ready = true
+    this.poolHealthMonitor.refresh()
     this.sendStatisticsMessageToWorker(workerNodeKey)
     this.setTasksQueuePriority(workerNodeKey)
     this.taskEventState.checkReady()

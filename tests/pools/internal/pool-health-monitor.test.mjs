@@ -27,8 +27,21 @@ const createMonitor = (overrides = {}) => {
   return { monitor, state }
 }
 
-it('transitions from healthy to degraded when started with too few ready worker nodes', () => {
+it('does not emit degraded during the startup ramp before reaching minimum', () => {
+  const { monitor, state } = createMonitor({ readyWorkerNodes: 0 })
+  monitor.refresh()
+  state.readyWorkerNodes = 1
+  monitor.refresh()
+  state.readyWorkerNodes = 2
+  monitor.refresh()
+  expect(monitor.state).toBe('healthy')
+  expect(state.degradedEvents).toHaveLength(0)
+  expect(state.degradedEndEvents).toBe(0)
+})
+
+it('transitions to degraded only after reaching minimum then dropping below it', () => {
   const { monitor, state } = createMonitor()
+  monitor.refresh()
   expect(monitor.state).toBe('healthy')
   state.readyWorkerNodes = 1
   monitor.refresh()
@@ -45,7 +58,9 @@ it('transitions from healthy to degraded when started with too few ready worker 
 })
 
 it('transitions from degraded back to healthy and emits degradedEnd', () => {
-  const { monitor, state } = createMonitor({ readyWorkerNodes: 1 })
+  const { monitor, state } = createMonitor()
+  monitor.refresh()
+  state.readyWorkerNodes = 1
   monitor.refresh()
   expect(monitor.state).toBe('degraded')
   state.readyWorkerNodes = 2
@@ -89,7 +104,9 @@ it('stays healthy when not started even with too few ready worker nodes', () => 
 })
 
 it('does not emit again when refresh is called repeatedly in the same state', () => {
-  const { monitor, state } = createMonitor({ readyWorkerNodes: 1 })
+  const { monitor, state } = createMonitor()
+  monitor.refresh()
+  state.readyWorkerNodes = 1
   monitor.refresh()
   monitor.refresh()
   monitor.refresh()
