@@ -114,3 +114,28 @@ it('does not emit again when refresh is called repeatedly in the same state', ()
   expect(state.degradedEvents).toHaveLength(1)
   expect(state.degradedEndEvents).toBe(0)
 })
+
+it('re-arms startup-ramp masking after reset so a restart ramp is not degraded', () => {
+  const { monitor, state } = createMonitor()
+  monitor.refresh()
+  expect(monitor.state).toBe('healthy')
+  monitor.reset()
+  state.readyWorkerNodes = 1
+  monitor.refresh()
+  expect(monitor.state).toBe('healthy')
+  expect(state.degradedEvents).toHaveLength(0)
+  expect(state.degradedEndEvents).toBe(0)
+})
+
+it('clears the unrecoverable latch on reset', () => {
+  const { monitor, state } = createMonitor()
+  state.tripped = true
+  monitor.refresh()
+  expect(monitor.state).toBe('unrecoverable')
+  state.tripped = false
+  monitor.reset()
+  expect(monitor.state).toBe('healthy')
+  expect(monitor.unrecoverable).toBe(false)
+  monitor.refresh()
+  expect(monitor.state).toBe('healthy')
+})

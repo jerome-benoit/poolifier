@@ -43,8 +43,8 @@ export class PoolHealthMonitor {
    * Recomputes the pool health state from the current pool topology and
    * publishes a transition when it changes. No-ops once unrecoverable (latched)
    * and when the recomputed state matches the current one. A pool that has not
-   * yet reached its minimum ready worker nodes for the first time is not
-   * reported as degraded, so the initial startup ramp does not publish a spurious
+   * yet reached its minimum ready worker nodes since the last {@link reset} is
+   * not reported as degraded, so a startup ramp does not publish a spurious
    * transition.
    */
   public refresh (): void {
@@ -78,5 +78,15 @@ export class PoolHealthMonitor {
         unrecoverable: next === 'unrecoverable',
       })
     }
+  }
+
+  /**
+   * Re-arms the monitor for a pool restart: clears the latched state and the
+   * startup-ramp mask so a restarted pool is not reported degraded or
+   * unrecoverable because of its previous run.
+   */
+  public reset (): void {
+    this.#everReady = false
+    this.#state = 'healthy'
   }
 }

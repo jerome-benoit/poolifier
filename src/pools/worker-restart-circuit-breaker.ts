@@ -50,4 +50,13 @@ export class WorkerRestartCircuitBreaker {
     }
     return true
   }
+
+  /**
+   * Re-arms the breaker for a pool restart, clearing the latch and the recorded
+   * attempts so a restarted pool starts from a clean crash-loop window.
+   */
+  public reset (): void {
+    this.#timestamps.length = 0
+    this.#tripped = false
+  }
 }

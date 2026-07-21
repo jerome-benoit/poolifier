@@ -43,3 +43,15 @@ it('is disabled when maxRestarts is infinite', () => {
   }
   expect(breaker.tripped).toBe(false)
 })
+
+it('clears the latch and window on reset so it can trip again', () => {
+  const breaker = new WorkerRestartCircuitBreaker(1, 1000)
+  expect(breaker.attemptRestart(0)).toBe(true)
+  expect(breaker.attemptRestart(100)).toBe(false)
+  expect(breaker.tripped).toBe(true)
+  breaker.reset()
+  expect(breaker.tripped).toBe(false)
+  expect(breaker.attemptRestart(200)).toBe(true)
+  expect(breaker.attemptRestart(300)).toBe(false)
+  expect(breaker.tripped).toBe(true)
+})

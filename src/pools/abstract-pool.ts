@@ -1028,6 +1028,8 @@ export abstract class AbstractPool<
 
   public start (): void {
     this.poolLifecycle.beginStart()
+    this.poolHealthMonitor.reset()
+    this.workerRestartCircuitBreaker.reset()
     const initialHandles = new Set(
       this.workerLifecycleCoordinator.snapshotHandles()
     )
