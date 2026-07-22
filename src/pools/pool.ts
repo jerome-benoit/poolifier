@@ -258,6 +258,7 @@ export type PoolEvent = keyof typeof PoolEvents
  * - `'healthy'`: The pool has at least its minimum number of ready worker nodes and the worker restart circuit breaker has not tripped.
  * - `'degraded'`: The pool is started but the number of ready worker nodes dropped below its minimum size.
  * - `'unrecoverable'`: The worker restart circuit breaker tripped; the pool can no longer replace faulted workers. Latched.
+ * @internal
  */
 export type PoolHealthState = 'degraded' | 'healthy' | 'unrecoverable'
 
